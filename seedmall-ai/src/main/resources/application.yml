@@ -1,0 +1,19 @@
+server:
+  port: 9107
+
+spring:
+  application:
+    name: seedmall-ai
+  threads:
+    virtual:
+      enabled: true
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+
+seedmall:
+  ai:
+    base-url: https://api.openai.com/v1
+    api-key: ${SEEDMALL_AI_API_KEY:}
+    model: gpt-4o-mini

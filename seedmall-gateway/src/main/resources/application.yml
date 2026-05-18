@@ -1,0 +1,45 @@
+server:
+  port: 9000
+
+spring:
+  application:
+    name: seedmall-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+      routes:
+        - id: auth
+          uri: lb://seedmall-auth
+          predicates:
+            - Path=/auth/**
+        - id: content
+          uri: lb://seedmall-content
+          predicates:
+            - Path=/contents/**
+        - id: product
+          uri: lb://seedmall-product
+          predicates:
+            - Path=/products/**
+        - id: seckill
+          uri: lb://seedmall-seckill
+          predicates:
+            - Path=/seckill/**
+        - id: order
+          uri: lb://seedmall-order
+          predicates:
+            - Path=/orders/**
+        - id: ai
+          uri: lb://seedmall-ai
+          predicates:
+            - Path=/ai/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

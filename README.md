@@ -1,0 +1,45 @@
+# SeedMall
+
+SeedMall 是一个 Java 微服务学习项目，业务形态是“内容种草社区 + 高并发秒杀交易 + AI 能力平台”。
+
+## 模块
+
+- `seedmall-gateway`：统一入口、服务路由、鉴权和限流扩展点。
+- `seedmall-auth`：登录与 JWT 签发。
+- `seedmall-user`：用户资料和关注关系扩展点。
+- `seedmall-content`：种草内容、Feed、内容审核事件。
+- `seedmall-product`：商品与库存。
+- `seedmall-seckill`：秒杀入口、Redis 预扣库存、MQ 削峰。
+- `seedmall-order`：订单创建和异步下单消费。
+- `seedmall-ai`：OpenAI 兼容 AI 能力封装。
+- `seedmall-common`：统一响应、异常和公共对象。
+- `seedmall-api`：Feign 契约、DTO、事件对象。
+
+## 本地依赖
+
+- JDK 21
+- Maven 3.9+
+- Nacos 2.x
+- MySQL 8.x
+- Redis 6+
+- RabbitMQ 3.x
+
+## 启动顺序
+
+1. 启动 Nacos、MySQL、Redis、RabbitMQ。
+2. 按需创建 `seedmall_user`、`seedmall_content`、`seedmall_product`、`seedmall_order` 数据库。
+3. 在环境变量中配置 `SEEDMALL_AI_API_KEY`。
+4. 执行 `mvn test` 验证项目。
+5. 分别启动业务服务，再启动 `seedmall-gateway`。
+
+## 学习路线
+
+1. 先读 `docs/superpowers/specs/2026-05-18-seedmall-design.md` 理解架构。
+2. 从 `seedmall-common` 和 `seedmall-api` 理解公共契约。
+3. 从 `seedmall-content -> seedmall-seckill -> seedmall-order` 串起内容到交易链路。
+4. 在 `seedmall-ai` 中扩展审核、标题生成、客服问答。
+5. 逐步补充缓存一致性、接口幂等、分布式锁、限流熔断、链路追踪和压测。
+
+## JDK 21
+
+项目使用 JDK 21，并在业务服务中开启 `spring.threads.virtual.enabled=true`。这个配置适合学习 AI 调用、Feign 调用、数据库访问等高延迟 IO 场景下的虚拟线程模型。

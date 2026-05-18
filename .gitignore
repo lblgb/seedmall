@@ -1,0 +1,17 @@
+# Java 构建产物
+target/
+*.class
+
+# IDE 与本地环境
+.idea/
+*.iml
+.vscode/
+
+# 日志与临时文件
+logs/
+*.log
+*.tmp
+
+# 密钥配置
+application-local.yml
+*.env
