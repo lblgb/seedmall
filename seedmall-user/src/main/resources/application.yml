@@ -10,11 +10,11 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: 127.0.0.1:8848
+        server-addr: ${SEEDMALL_NACOS_ADDR:127.0.0.1:8848}
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/seedmall_user?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: root
-    password: root
+    url: jdbc:mysql://${SEEDMALL_MYSQL_HOST:127.0.0.1}:${SEEDMALL_MYSQL_PORT:3306}/seedmall_user?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: ${SEEDMALL_MYSQL_USERNAME:root}
+    password: ${SEEDMALL_MYSQL_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 mybatis-plus:
