@@ -2,6 +2,11 @@
 target/
 *.class
 
+# Node 构建产物
+node_modules/
+dist/
+coverage/
+
 # IDE 与本地环境
 .idea/
 *.iml

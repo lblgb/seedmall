@@ -1,0 +1,24 @@
+{
+  "name": "seedmall-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vue-tsc --noEmit && vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "^5.2.4",
+    "axios": "^1.9.0",
+    "lucide-vue-next": "^0.468.0",
+    "vite": "^6.3.5",
+    "vue": "^3.5.14"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4",
+    "vue-tsc": "^2.2.10"
+  }
+}
