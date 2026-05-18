@@ -1,0 +1,83 @@
+# SeedMall 本地开发基础设施，提供 Nacos、MySQL、Redis 和 RabbitMQ。
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: seedmall-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      TZ: Asia/Shanghai
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+08:00
+    volumes:
+      - seedmall-mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -p${MYSQL_ROOT_PASSWORD:-root} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  nacos:
+    image: nacos/nacos-server:v2.3.2
+    container_name: seedmall-nacos
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+      JVM_XMN: 128m
+      TZ: Asia/Shanghai
+    ports:
+      - "${NACOS_PORT:-8848}:8848"
+      - "${NACOS_GRPC_PORT:-9848}:9848"
+      - "${NACOS_RAFT_PORT:-9849}:9849"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8848/nacos/actuator/health | grep -q UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.2
+    container_name: seedmall-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - seedmall-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: seedmall-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+      TZ: Asia/Shanghai
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - seedmall-rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  seedmall-mysql-data:
+  seedmall-redis-data:
+  seedmall-rabbitmq-data:
