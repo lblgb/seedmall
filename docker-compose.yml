@@ -1,4 +1,4 @@
-# SeedMall 本地开发基础设施，提供 Nacos、MySQL、Redis 和 RabbitMQ。
+# SeedMall 本地开发基础设施，提供 Nacos、MySQL、Redis 和 RocketMQ。
 services:
   mysql:
     image: mysql:8.4
@@ -58,21 +58,39 @@ services:
       timeout: 5s
       retries: 10
 
-  rabbitmq:
-    image: rabbitmq:3.13-management
-    container_name: seedmall-rabbitmq
+  rocketmq-namesrv:
+    image: apache/rocketmq:5.3.4
+    container_name: seedmall-rocketmq-namesrv
     restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
-      TZ: Asia/Shanghai
+    command: sh mqnamesrv
     ports:
-      - "${RABBITMQ_PORT:-5672}:5672"
-      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
-    volumes:
-      - seedmall-rabbitmq-data:/var/lib/rabbitmq
+      - "${ROCKETMQ_NAMESRV_PORT:-9876}:9876"
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: ["CMD-SHELL", "sh mqadmin clusterList -n 127.0.0.1:9876 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rocketmq-broker:
+    image: apache/rocketmq:5.3.4
+    container_name: seedmall-rocketmq-broker
+    restart: unless-stopped
+    depends_on:
+      - rocketmq-namesrv
+    environment:
+      NAMESRV_ADDR: rocketmq-namesrv:9876
+      JAVA_OPT_EXT: -Duser.home=/home/rocketmq -Xms256m -Xmx512m
+      TZ: Asia/Shanghai
+    command: sh mqbroker -n rocketmq-namesrv:9876 -c /home/rocketmq/broker.conf
+    ports:
+      - "${ROCKETMQ_BROKER_FAST_PORT:-10909}:10909"
+      - "${ROCKETMQ_BROKER_PORT:-10911}:10911"
+      - "${ROCKETMQ_BROKER_HA_PORT:-10912}:10912"
+    volumes:
+      - ./docker/rocketmq/broker.conf:/home/rocketmq/broker.conf:ro
+      - seedmall-rocketmq-store:/home/rocketmq/store
+    healthcheck:
+      test: ["CMD-SHELL", "sh mqadmin brokerStatus -n rocketmq-namesrv:9876 -b 127.0.0.1:10911 >/dev/null 2>&1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -80,4 +98,4 @@ services:
 volumes:
   seedmall-mysql-data:
   seedmall-redis-data:
-  seedmall-rabbitmq-data:
+  seedmall-rocketmq-store:

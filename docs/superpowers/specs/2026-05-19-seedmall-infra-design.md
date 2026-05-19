@@ -2,7 +2,7 @@
 
 ## 目标
 
-为 SeedMall 增加本地开发基础设施，让 Nacos、MySQL、Redis、RabbitMQ 可以通过 Docker Compose 一键启动，并自动初始化业务数据库和基础表。
+为 SeedMall 增加本地开发基础设施，让 Nacos、MySQL、Redis、RocketMQ 可以通过 Docker Compose 一键启动，并自动初始化业务数据库和基础表。
 
 ## 范围
 
@@ -13,7 +13,7 @@
 
 ## 技术约束
 
-- 保持现有服务配置默认值不变：Nacos `8848`、MySQL `3306`、Redis `6379`、RabbitMQ `5672/15672`。
+- 保持现有服务配置默认值不变：Nacos `8848`、MySQL `3306`、Redis `6379`、RocketMQ `9876/10911`。
 - MySQL root 密码默认使用 `root`，与当前服务 `application.yml` 对齐。
 - SQL 文件使用 UTF-8 编码。
 - 初始化表只覆盖当前骨架已经出现的实体和核心链路，不提前扩展复杂表。

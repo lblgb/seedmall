@@ -3,9 +3,10 @@
  */
 package com.seedmall.seckill.service;
 
+import com.seedmall.api.mq.RocketMqTopics;
 import com.seedmall.api.order.CreateOrderRequest;
 import com.seedmall.common.exception.BizException;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -16,14 +17,14 @@ import org.springframework.stereotype.Service;
 public class SeckillService {
 
     private final StringRedisTemplate redisTemplate;
-    private final RabbitTemplate rabbitTemplate;
+    private final RocketMQTemplate rocketMQTemplate;
 
     /**
      * 注入 Redis 与 MQ 模板。
      */
-    public SeckillService(StringRedisTemplate redisTemplate, RabbitTemplate rabbitTemplate) {
+    public SeckillService(StringRedisTemplate redisTemplate, RocketMQTemplate rocketMQTemplate) {
         this.redisTemplate = redisTemplate;
-        this.rabbitTemplate = rabbitTemplate;
+        this.rocketMQTemplate = rocketMQTemplate;
     }
 
     /**
@@ -37,7 +38,7 @@ public class SeckillService {
             throw new BizException(409, "秒杀库存不足");
         }
         CreateOrderRequest request = new CreateOrderRequest(userId, productId, 1, "SECKILL");
-        rabbitTemplate.convertAndSend("seedmall.order.create", request);
+        rocketMQTemplate.convertAndSend(RocketMqTopics.ORDER_CREATE, request);
         return "排队中";
     }
 }

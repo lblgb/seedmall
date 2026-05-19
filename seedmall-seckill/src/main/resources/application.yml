@@ -15,8 +15,7 @@ spring:
     redis:
       host: ${SEEDMALL_REDIS_HOST:127.0.0.1}
       port: ${SEEDMALL_REDIS_PORT:6379}
-  rabbitmq:
-    host: ${SEEDMALL_RABBITMQ_HOST:127.0.0.1}
-    port: ${SEEDMALL_RABBITMQ_PORT:5672}
-    username: ${SEEDMALL_RABBITMQ_USERNAME:guest}
-    password: ${SEEDMALL_RABBITMQ_PASSWORD:guest}
+rocketmq:
+  name-server: ${SEEDMALL_ROCKETMQ_NAME_SERVER:127.0.0.1:9876}
+  producer:
+    group: seedmall-seckill-producer

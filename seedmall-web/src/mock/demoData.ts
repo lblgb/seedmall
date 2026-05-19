@@ -73,7 +73,7 @@ export const demoTimeline: TimelineEvent[] = [
   { name: '网关路由', status: 'ready', detail: '请求统一从 seedmall-gateway 进入' },
   { name: '内容审核', status: 'ready', detail: '内容发布后发送 MQ 审核事件' },
   { name: '秒杀预扣', status: 'ready', detail: 'Redis 承接库存热点' },
-  { name: '异步下单', status: 'ready', detail: 'RabbitMQ 削峰后创建订单' }
+  { name: '异步下单', status: 'ready', detail: 'RocketMQ 削峰后创建订单' }
 ];
 
 /**

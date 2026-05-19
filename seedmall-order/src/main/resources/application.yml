@@ -16,8 +16,7 @@ spring:
     username: ${SEEDMALL_MYSQL_USERNAME:root}
     password: ${SEEDMALL_MYSQL_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  rabbitmq:
-    host: ${SEEDMALL_RABBITMQ_HOST:127.0.0.1}
-    port: ${SEEDMALL_RABBITMQ_PORT:5672}
-    username: ${SEEDMALL_RABBITMQ_USERNAME:guest}
-    password: ${SEEDMALL_RABBITMQ_PASSWORD:guest}
+rocketmq:
+  name-server: ${SEEDMALL_ROCKETMQ_NAME_SERVER:127.0.0.1:9876}
+  producer:
+    group: seedmall-order-producer

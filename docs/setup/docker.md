@@ -42,7 +42,8 @@ docker compose up -d
 - Nacos：`http://localhost:8848/nacos`
 - MySQL：`localhost:3306`
 - Redis：`localhost:6379`
-- RabbitMQ：`http://localhost:15672`
+- RocketMQ NameServer：`localhost:9876`
+- RocketMQ Broker：`localhost:10911`
 
 ## 迁移说明
 
@@ -55,9 +56,6 @@ Windows 原生和 Docker/Linux 使用同一组环境变量：
 - `SEEDMALL_MYSQL_PASSWORD`
 - `SEEDMALL_REDIS_HOST`
 - `SEEDMALL_REDIS_PORT`
-- `SEEDMALL_RABBITMQ_HOST`
-- `SEEDMALL_RABBITMQ_PORT`
-- `SEEDMALL_RABBITMQ_USERNAME`
-- `SEEDMALL_RABBITMQ_PASSWORD`
+- `SEEDMALL_ROCKETMQ_NAME_SERVER`
 
 因此以后切 Linux/Docker 时，通常只需要换环境变量，不需要改 Java 代码。

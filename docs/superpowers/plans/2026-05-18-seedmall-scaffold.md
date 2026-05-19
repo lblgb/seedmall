@@ -6,7 +6,7 @@
 
 **Architecture:** 使用 Maven 多模块组织服务，公共模块提供响应和异常，API 模块提供 Feign/DTO，业务服务各自独立启动。网关统一路由，秒杀服务用 Redis + MQ 表达大流量入口，AI 服务封装 OpenAI 兼容接口。
 
-**Tech Stack:** Java 21、Spring Boot 3.2.5、Spring Cloud 2023.0.1、Spring Cloud Alibaba 2023.0.1.0、MyBatis-Plus 3.5.7、Redis、RabbitMQ、Nacos、Sentinel。
+**Tech Stack:** Java 21、Spring Boot 3.2.5、Spring Cloud 2023.0.1、Spring Cloud Alibaba 2023.0.1.0、MyBatis-Plus 3.5.7、Redis、RocketMQ、Nacos、Sentinel。
 
 ---
 
@@ -70,7 +70,7 @@ AI、订单、内容事件对象集中放在 `seedmall-api`，避免服务之间
 
 - [x] **Step 4: 创建秒杀服务**
 
-秒杀服务提供 Redis 预扣库存和 RabbitMQ 异步下单入口。
+秒杀服务提供 Redis 预扣库存和 RocketMQ 异步下单入口。
 
 - [x] **Step 5: 创建 AI 服务**
 

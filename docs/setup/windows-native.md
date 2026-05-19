@@ -15,7 +15,7 @@
 
 - MySQL 8.x
 - Redis 6+ 或 7.x
-- RabbitMQ 3.x Management
+- RocketMQ 5.x
 - Nacos 2.3.x
 
 ## 端口约定
@@ -25,8 +25,8 @@
 | Nacos | `127.0.0.1:8848` |
 | MySQL | `127.0.0.1:3306` |
 | Redis | `127.0.0.1:6379` |
-| RabbitMQ | `127.0.0.1:5672` |
-| RabbitMQ 控制台 | `http://127.0.0.1:15672` |
+| RocketMQ NameServer | `127.0.0.1:9876` |
+| RocketMQ Broker | `127.0.0.1:10911` |
 | 后端网关 | `http://127.0.0.1:9000` |
 | 前端 | `http://127.0.0.1:5173` |
 
@@ -42,10 +42,7 @@ $env:SEEDMALL_MYSQL_USERNAME="root"
 $env:SEEDMALL_MYSQL_PASSWORD="root"
 $env:SEEDMALL_REDIS_HOST="127.0.0.1"
 $env:SEEDMALL_REDIS_PORT="6379"
-$env:SEEDMALL_RABBITMQ_HOST="127.0.0.1"
-$env:SEEDMALL_RABBITMQ_PORT="5672"
-$env:SEEDMALL_RABBITMQ_USERNAME="guest"
-$env:SEEDMALL_RABBITMQ_PASSWORD="guest"
+$env:SEEDMALL_ROCKETMQ_NAME_SERVER="127.0.0.1:9876"
 ```
 
 AI 密钥按需设置：
@@ -79,24 +76,25 @@ redis-cli SET seckill:stock:102 58
 redis-cli SET seckill:stock:103 24
 ```
 
-## RabbitMQ 队列
+## RocketMQ 主题
 
-项目启动后会通过 Spring AMQP 自动声明：
+本地开发建议开启 RocketMQ 自动创建 topic，项目会使用：
 
-- `seedmall.content.audit`
-- `seedmall.order.create`
+- `seedmall-content-audit-topic`
+- `seedmall-order-create-topic`
 
-RabbitMQ 默认账号密码：
+如果 RocketMQ 解压在 `E:\tools\rocketmq`，可以分别启动：
 
-```text
-guest / guest
+```powershell
+E:\tools\rocketmq\bin\mqnamesrv.cmd
+E:\tools\rocketmq\bin\mqbroker.cmd -c E:\tools\rocketmq\conf\broker-local.conf
 ```
 
 ## 启动顺序
 
 1. 启动 MySQL，并执行初始化 SQL。
 2. 启动 Redis，并写入秒杀库存 key。
-3. 启动 RabbitMQ Management。
+3. 启动 RocketMQ NameServer 和 Broker。
 4. 启动 Nacos standalone。
 5. 在项目根目录执行后端验证：
 

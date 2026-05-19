@@ -4,9 +4,9 @@
 
 **Goal:** 增加 SeedMall 本地 Docker Compose 基础设施和 MySQL 初始化 SQL。
 
-**Architecture:** 根目录提供 `docker-compose.yml` 管理 Nacos、MySQL、Redis、RabbitMQ；MySQL 通过挂载 `docker/mysql/init` 自动建库建表；README 作为本地启动入口文档。
+**Architecture:** 根目录提供 `docker-compose.yml` 管理 Nacos、MySQL、Redis、RocketMQ；MySQL 通过挂载 `docker/mysql/init` 自动建库建表；README 作为本地启动入口文档。
 
-**Tech Stack:** Docker Compose、MySQL 8.4、Redis 7、RabbitMQ 3 Management、Nacos standalone。
+**Tech Stack:** Docker Compose、MySQL 8.4、Redis 7、RocketMQ 5、Nacos standalone。
 
 ---
 
@@ -18,7 +18,7 @@
 
 - [x] **Step 1: 创建环境变量样例**
 
-`.env.example` 记录 MySQL、Redis、RabbitMQ、Nacos 端口和账号。
+`.env.example` 记录 MySQL、Redis、RocketMQ、Nacos 端口和账号。
 
 - [x] **Step 2: 创建 Docker Compose**
 
