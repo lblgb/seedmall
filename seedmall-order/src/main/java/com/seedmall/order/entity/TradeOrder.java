@@ -7,6 +7,8 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
+import java.time.LocalDateTime;
+
 /**
  * 交易订单实体。
  */
@@ -19,6 +21,10 @@ public class TradeOrder {
     private Long userId;
     private Long productId;
     private Integer status;
+    private Integer quantity;
+    private String source;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     /**
      * 返回订单编号。
@@ -88,5 +94,61 @@ public class TradeOrder {
      */
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    /**
+     * 返回购买数量。
+     */
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    /**
+     * 设置购买数量。
+     */
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    /**
+     * 返回订单来源。
+     */
+    public String getSource() {
+        return source;
+    }
+
+    /**
+     * 设置订单来源。
+     */
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    /**
+     * 返回创建时间。
+     */
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    /**
+     * 设置创建时间。
+     */
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    /**
+     * 返回更新时间。
+     */
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    /**
+     * 设置更新时间。
+     */
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

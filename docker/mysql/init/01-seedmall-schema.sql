@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS trade_order (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_order_no (order_no),
+    UNIQUE KEY uk_user_product_source (user_id, product_id, source),
     KEY idx_user_id (user_id),
     KEY idx_product_id (product_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '交易订单表';
