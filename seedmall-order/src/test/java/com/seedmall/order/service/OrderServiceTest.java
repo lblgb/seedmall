@@ -5,6 +5,7 @@ package com.seedmall.order.service;
 
 import com.seedmall.api.order.CreateOrderRequest;
 import com.seedmall.order.entity.TradeOrder;
+import com.seedmall.order.integration.ProductStockClient;
 import com.seedmall.order.repository.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DuplicateKeyException;
@@ -26,7 +27,8 @@ class OrderServiceTest {
     @Test
     void shouldCreateOrderWhenNoExistingOrder() {
         FakeOrderRepository repository = new FakeOrderRepository();
-        OrderService service = new OrderService(repository);
+        FakeProductStockClient productStockClient = new FakeProductStockClient();
+        OrderService service = new OrderService(repository, productStockClient);
 
         String orderNo = service.create(new CreateOrderRequest(7L, 101L, 2, "SECKILL"));
 
@@ -39,6 +41,7 @@ class OrderServiceTest {
         assertThat(saved.getQuantity()).isEqualTo(2);
         assertThat(saved.getSource()).isEqualTo("SECKILL");
         assertThat(saved.getStatus()).isZero();
+        assertThat(productStockClient.deductRequests).containsExactly("101:2");
     }
 
     /**
@@ -53,12 +56,14 @@ class OrderServiceTest {
         existing.setProductId(101L);
         existing.setSource("SECKILL");
         repository.existingOrder = existing;
-        OrderService service = new OrderService(repository);
+        FakeProductStockClient productStockClient = new FakeProductStockClient();
+        OrderService service = new OrderService(repository, productStockClient);
 
         String orderNo = service.create(new CreateOrderRequest(7L, 101L, 1, "SECKILL"));
 
         assertThat(orderNo).isEqualTo("SM_EXISTING");
         assertThat(repository.savedOrders).isEmpty();
+        assertThat(productStockClient.deductRequests).isEmpty();
     }
 
     /**
@@ -69,11 +74,13 @@ class OrderServiceTest {
         FakeOrderRepository repository = new FakeOrderRepository();
         repository.duplicateOnSave = true;
         repository.existingAfterDuplicate = orderOf("SM_RACE_WINNER", 7L, 101L, "SECKILL");
-        OrderService service = new OrderService(repository);
+        FakeProductStockClient productStockClient = new FakeProductStockClient();
+        OrderService service = new OrderService(repository, productStockClient);
 
         String orderNo = service.create(new CreateOrderRequest(7L, 101L, 1, "SECKILL"));
 
         assertThat(orderNo).isEqualTo("SM_RACE_WINNER");
+        assertThat(productStockClient.deductRequests).isEmpty();
     }
 
     /**
@@ -82,7 +89,7 @@ class OrderServiceTest {
     @Test
     void shouldDefaultSourceWhenRequestSourceIsBlank() {
         FakeOrderRepository repository = new FakeOrderRepository();
-        OrderService service = new OrderService(repository);
+        OrderService service = new OrderService(repository, new FakeProductStockClient());
 
         service.create(new CreateOrderRequest(7L, 101L, 1, " "));
 
@@ -124,6 +131,22 @@ class OrderServiceTest {
                 throw new DuplicateKeyException("duplicate business key");
             }
             savedOrders.add(order);
+        }
+    }
+
+    /**
+     * 测试用商品库存客户端，记录扣库存请求。
+     */
+    private static final class FakeProductStockClient implements ProductStockClient {
+
+        private final List<String> deductRequests = new ArrayList<>();
+
+        /**
+         * 记录扣减商品库存的请求。
+         */
+        @Override
+        public void deductStock(Long productId, Integer quantity) {
+            deductRequests.add(productId + ":" + quantity);
         }
     }
 

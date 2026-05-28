@@ -5,6 +5,7 @@ package com.seedmall.order.service;
 
 import com.seedmall.api.order.CreateOrderRequest;
 import com.seedmall.order.entity.TradeOrder;
+import com.seedmall.order.integration.ProductStockClient;
 import com.seedmall.order.repository.OrderRepository;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -21,12 +22,14 @@ public class OrderService {
 
     private static final String DEFAULT_SOURCE = "SECKILL";
     private final OrderRepository orderRepository;
+    private final ProductStockClient productStockClient;
 
     /**
-     * 注入订单仓储。
+     * 注入订单仓储和商品库存客户端。
      */
-    public OrderService(OrderRepository orderRepository) {
+    public OrderService(OrderRepository orderRepository, ProductStockClient productStockClient) {
         this.orderRepository = orderRepository;
+        this.productStockClient = productStockClient;
     }
 
     /**
@@ -52,6 +55,7 @@ public class OrderService {
         order.setStatus(0);
         try {
             orderRepository.save(order);
+            productStockClient.deductStock(order.getProductId(), order.getQuantity());
         } catch (DuplicateKeyException ex) {
             return orderRepository.findByBusinessKey(request.userId(), request.productId(), source)
                     .map(TradeOrder::getOrderNo)
