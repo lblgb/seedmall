@@ -4,6 +4,7 @@
 package com.seedmall.order.service;
 
 import com.seedmall.api.order.CreateOrderRequest;
+import com.seedmall.api.order.OrderQueryResponse;
 import com.seedmall.order.entity.TradeOrder;
 import com.seedmall.order.integration.ProductStockClient;
 import com.seedmall.order.repository.OrderRepository;
@@ -94,6 +95,37 @@ class OrderServiceTest {
         service.create(new CreateOrderRequest(7L, 101L, 1, " "));
 
         assertThat(repository.savedOrders.getFirst().getSource()).isEqualTo("SECKILL");
+    }
+
+    /**
+     * 查询秒杀订单时应返回已有订单快照。
+     */
+    @Test
+    void shouldQueryExistingSeckillOrder() {
+        FakeOrderRepository repository = new FakeOrderRepository();
+        repository.existingOrder = orderOf("SM_EXISTING", 7L, 101L, "SECKILL");
+        repository.existingOrder.setStatus(0);
+        repository.existingOrder.setQuantity(1);
+        OrderService service = new OrderService(repository, new FakeProductStockClient());
+
+        Optional<OrderQueryResponse> response = service.querySeckillOrder(7L, 101L);
+
+        assertThat(response).isPresent();
+        assertThat(response.get().orderNo()).isEqualTo("SM_EXISTING");
+        assertThat(response.get().status()).isZero();
+        assertThat(response.get().quantity()).isEqualTo(1);
+    }
+
+    /**
+     * 没有秒杀订单时应返回空结果。
+     */
+    @Test
+    void shouldReturnEmptyWhenSeckillOrderDoesNotExist() {
+        OrderService service = new OrderService(new FakeOrderRepository(), new FakeProductStockClient());
+
+        Optional<OrderQueryResponse> response = service.querySeckillOrder(7L, 101L);
+
+        assertThat(response).isEmpty();
     }
 
     /**

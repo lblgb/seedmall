@@ -47,6 +47,16 @@ export type SeckillResult = {
   message: string;
 };
 
+export type SeckillOrder = {
+  orderNo: string;
+  userId: number;
+  productId: number;
+  quantity: number;
+  status: number;
+  statusText: string;
+  source: string;
+};
+
 export type TimelineEvent = {
   name: string;
   status: 'ready' | 'running' | 'done' | 'warn';
@@ -57,6 +67,7 @@ export type SeedmallApi = {
   fetchFeed: () => Promise<FeedItem[]>;
   fetchProduct: (productId: number) => Promise<ProductItem>;
   reserveSeckill: (productId: number, userId: number) => Promise<SeckillResult>;
+  fetchSeckillOrder: (productId: number, userId: number) => Promise<SeckillOrder>;
   auditContent: (bizId: string, content: string) => Promise<AiAuditResult>;
 };
 
@@ -105,6 +116,52 @@ function normalizeProduct(rawProduct: Partial<ProductItem>, productId: number): 
 }
 
 /**
+ * 将订单状态码转换为前端展示文案。
+ */
+function orderStatusText(status: number): string {
+  const statusMap: Record<number, string> = {
+    0: '已创建',
+    1: '已支付',
+    2: '已取消'
+  };
+  return statusMap[status] ?? '未知状态';
+}
+
+/**
+ * 构造空订单状态，表示异步订单尚未创建或查询失败。
+ */
+function emptySeckillOrder(productId: number, userId: number): SeckillOrder {
+  return {
+    orderNo: '',
+    userId,
+    productId,
+    quantity: 0,
+    status: -1,
+    statusText: '暂无订单',
+    source: 'SECKILL'
+  };
+}
+
+/**
+ * 将后端订单响应转换为前端展示模型。
+ */
+function normalizeSeckillOrder(rawOrder: Partial<SeckillOrder> | null, productId: number, userId: number): SeckillOrder {
+  if (!rawOrder || !rawOrder.orderNo) {
+    return emptySeckillOrder(productId, userId);
+  }
+  const status = rawOrder.status ?? 0;
+  return {
+    orderNo: rawOrder.orderNo,
+    userId: rawOrder.userId ?? userId,
+    productId: rawOrder.productId ?? productId,
+    quantity: rawOrder.quantity ?? 1,
+    status,
+    statusText: orderStatusText(status),
+    source: rawOrder.source ?? 'SECKILL'
+  };
+}
+
+/**
  * 创建 SeedMall API 客户端。
  */
 export function createSeedmallApi(gatewayUrl: string, httpClient: HttpClient = axios): SeedmallApi {
@@ -144,6 +201,20 @@ export function createSeedmallApi(gatewayUrl: string, httpClient: HttpClient = a
         return { status: 'SUCCESS', message: unwrapApiResponse(response) };
       } catch {
         return createDemoSeckillResult(productId);
+      }
+    },
+
+    /**
+     * 查询当前用户的秒杀订单，失败时返回空订单状态。
+     */
+    async fetchSeckillOrder(productId: number, userId: number) {
+      try {
+        const response = await httpClient.get<ApiResponse<Partial<SeckillOrder> | null>>(
+          `${baseUrl}/orders/seckill?userId=${userId}&productId=${productId}`
+        );
+        return normalizeSeckillOrder(unwrapApiResponse(response), productId, userId);
+      } catch {
+        return emptySeckillOrder(productId, userId);
       }
     },
 

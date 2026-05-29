@@ -69,7 +69,7 @@ h2 {
 
 .gateway-control {
   display: grid;
-  grid-template-columns: auto minmax(260px, 360px) 42px;
+  grid-template-columns: auto minmax(220px, 320px) auto minmax(80px, 110px) 42px;
   align-items: end;
   gap: 8px;
 }
@@ -336,6 +336,43 @@ textarea {
   margin-top: 12px;
 }
 
+.order-result {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.8fr) minmax(180px, 1.3fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.order-result div {
+  min-width: 0;
+  border: 1px solid #e1e6df;
+  border-radius: 8px;
+  background: #fbfcfb;
+  padding: 10px;
+}
+
+.order-result span,
+.order-result strong {
+  display: block;
+}
+
+.order-result span {
+  color: #697369;
+  font-size: 12px;
+}
+
+.order-result strong {
+  overflow-wrap: anywhere;
+  margin-top: 4px;
+  color: #17201a;
+  font-size: 14px;
+}
+
+.compact-button {
+  grid-column: span 2;
+  margin: 0;
+}
+
 .audit-result {
   display: block;
   border-left: 4px solid #2f7d55;
@@ -396,6 +433,14 @@ textarea {
 
   .gateway-control label {
     grid-column: span 2;
+  }
+
+  .order-result {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-button {
+    grid-column: auto;
   }
 
   .product-panel {

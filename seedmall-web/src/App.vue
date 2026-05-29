@@ -2,16 +2,25 @@
 <script setup lang="ts">
 import { Bot, CheckCircle2, Loader2, RefreshCw, Search, Send, ShoppingCart, Zap } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
-import { createSeedmallApi, type AiAuditResult, type FeedItem, type ProductItem, type SeckillResult } from './api/seedmallApi';
+import {
+  createSeedmallApi,
+  type AiAuditResult,
+  type FeedItem,
+  type ProductItem,
+  type SeckillOrder,
+  type SeckillResult
+} from './api/seedmallApi';
 import { demoTimeline, findDemoProduct } from './mock/demoData';
 
 const gatewayUrl = ref('http://localhost:9000');
 const feedItems = ref<FeedItem[]>([]);
 const selectedContent = ref<FeedItem | null>(null);
 const selectedProduct = ref<ProductItem>(findDemoProduct(101));
+const userId = ref(1);
 const auditText = ref('这是一篇关于周末露营轻装清单的种草内容。');
 const auditResult = ref<AiAuditResult | null>(null);
 const seckillResult = ref<SeckillResult | null>(null);
+const seckillOrder = ref<SeckillOrder | null>(null);
 const customerQuestion = ref('这套商品适合新手露营吗？');
 const customerAnswer = ref('适合。当前演示客服会结合内容、商品和活动信息给出推荐理由。');
 const loading = ref(false);
@@ -48,7 +57,25 @@ async function refreshDashboard() {
 async function selectContent(item: FeedItem) {
   selectedContent.value = item;
   selectedProduct.value = await apiClient().fetchProduct(item.productId);
+  seckillOrder.value = null;
+  seckillResult.value = null;
   auditText.value = item.summary;
+}
+
+/**
+ * 短暂等待异步 MQ 消费，便于页面随后读取订单结果。
+ */
+function waitForOrderCreation() {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, 1200);
+  });
+}
+
+/**
+ * 查询当前商品的秒杀订单结果。
+ */
+async function refreshSeckillOrder() {
+  seckillOrder.value = await apiClient().fetchSeckillOrder(selectedProduct.value.id, userId.value);
 }
 
 /**
@@ -57,7 +84,9 @@ async function selectContent(item: FeedItem) {
 async function reserveSelectedProduct() {
   loading.value = true;
   try {
-    seckillResult.value = await apiClient().reserveSeckill(selectedProduct.value.id, 1);
+    seckillResult.value = await apiClient().reserveSeckill(selectedProduct.value.id, userId.value);
+    await waitForOrderCreation();
+    await refreshSeckillOrder();
   } finally {
     loading.value = false;
   }
@@ -92,6 +121,8 @@ onMounted(() => {
       <div class="gateway-control">
         <label for="gateway">网关地址</label>
         <input id="gateway" v-model="gatewayUrl" type="text" />
+        <label for="userId">用户</label>
+        <input id="userId" v-model.number="userId" type="number" min="1" />
         <button type="button" class="icon-button" title="刷新数据" @click="refreshDashboard">
           <Loader2 v-if="loading" class="spin" :size="18" />
           <RefreshCw v-else :size="18" />
@@ -167,6 +198,20 @@ onMounted(() => {
           <div class="result-line">
             <ShoppingCart :size="18" />
             <span>{{ seckillResult?.message ?? '等待用户发起秒杀请求' }}</span>
+          </div>
+          <div class="order-result">
+            <div>
+              <span>订单状态</span>
+              <strong>{{ seckillOrder?.statusText ?? '尚未查询' }}</strong>
+            </div>
+            <div>
+              <span>订单号</span>
+              <strong>{{ seckillOrder?.orderNo || '-' }}</strong>
+            </div>
+            <button type="button" class="secondary-button compact-button" @click="refreshSeckillOrder">
+              <RefreshCw :size="16" />
+              刷新订单
+            </button>
           </div>
         </div>
       </section>

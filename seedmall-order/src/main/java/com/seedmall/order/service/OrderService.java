@@ -4,6 +4,7 @@
 package com.seedmall.order.service;
 
 import com.seedmall.api.order.CreateOrderRequest;
+import com.seedmall.api.order.OrderQueryResponse;
 import com.seedmall.order.entity.TradeOrder;
 import com.seedmall.order.integration.ProductStockClient;
 import com.seedmall.order.repository.OrderRepository;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.Optional;
 
 /**
  * 订单业务服务。
@@ -40,6 +42,14 @@ public class OrderService {
         return orderRepository.findByBusinessKey(request.userId(), request.productId(), source)
                 .map(TradeOrder::getOrderNo)
                 .orElseGet(() -> createNewOrder(request, source));
+    }
+
+    /**
+     * 查询用户在指定商品上的秒杀订单。
+     */
+    public Optional<OrderQueryResponse> querySeckillOrder(Long userId, Long productId) {
+        return orderRepository.findByBusinessKey(userId, productId, DEFAULT_SOURCE)
+                .map(this::toQueryResponse);
     }
 
     /**
@@ -81,5 +91,19 @@ public class OrderService {
         String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         int random = ThreadLocalRandom.current().nextInt(1000, 9999);
         return "SM" + time + userId + random;
+    }
+
+    /**
+     * 转换为订单查询响应对象。
+     */
+    private OrderQueryResponse toQueryResponse(TradeOrder order) {
+        return new OrderQueryResponse(
+                order.getOrderNo(),
+                order.getUserId(),
+                order.getProductId(),
+                order.getQuantity(),
+                order.getStatus(),
+                order.getSource()
+        );
     }
 }
