@@ -5,6 +5,7 @@ package com.seedmall.seckill.service;
 
 import com.seedmall.api.mq.RocketMqTopics;
 import com.seedmall.api.order.CreateOrderRequest;
+import com.seedmall.api.seckill.SeckillStockResponse;
 import com.seedmall.common.exception.BizException;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.junit.jupiter.api.Test;
@@ -75,6 +76,40 @@ class SeckillServiceTest {
         verify(fixture.valueOperations).increment("seckill:stock:101");
         verify(fixture.redisTemplate).delete("seckill:reservation:101:7");
         verify(fixture.rocketMQTemplate, never()).convertAndSend(eq(RocketMqTopics.ORDER_CREATE), any(CreateOrderRequest.class));
+    }
+
+    /**
+     * 初始化秒杀库存时应写入 Redis 库存 key。
+     */
+    @Test
+    void shouldInitializeSeckillStock() {
+        TestFixture fixture = new TestFixture();
+
+        SeckillStockResponse response = fixture.service.initializeStock(101L, 20);
+
+        verify(fixture.valueOperations).set("seckill:stock:101", "20");
+        assertThat(response.productId()).isEqualTo(101L);
+        assertThat(response.redisStock()).isEqualTo(20);
+        assertThat(response.reserved()).isFalse();
+    }
+
+    /**
+     * 查询秒杀库存时应返回 Redis 库存和用户排队标记。
+     */
+    @Test
+    void shouldQuerySeckillStockStatus() {
+        TestFixture fixture = new TestFixture();
+        when(fixture.valueOperations.get("seckill:stock:101")).thenReturn("9");
+        when(fixture.redisTemplate.hasKey("seckill:reservation:101:7")).thenReturn(true);
+        when(fixture.redisTemplate.getExpire("seckill:reservation:101:7")).thenReturn(120L);
+
+        SeckillStockResponse response = fixture.service.queryStock(101L, 7L);
+
+        assertThat(response.productId()).isEqualTo(101L);
+        assertThat(response.redisStock()).isEqualTo(9);
+        assertThat(response.userId()).isEqualTo(7L);
+        assertThat(response.reserved()).isTrue();
+        assertThat(response.reservationTtlSeconds()).isEqualTo(120L);
     }
 
     /**

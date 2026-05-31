@@ -57,6 +57,15 @@ export type SeckillOrder = {
   source: string;
 };
 
+export type SeckillStock = {
+  productId: number;
+  redisStock: number | null;
+  userId: number | null;
+  reserved: boolean;
+  reservedText: string;
+  reservationTtlSeconds: number | null;
+};
+
 export type TimelineEvent = {
   name: string;
   status: 'ready' | 'running' | 'done' | 'warn';
@@ -68,6 +77,8 @@ export type SeedmallApi = {
   fetchProduct: (productId: number) => Promise<ProductItem>;
   reserveSeckill: (productId: number, userId: number) => Promise<SeckillResult>;
   fetchSeckillOrder: (productId: number, userId: number) => Promise<SeckillOrder>;
+  fetchSeckillStock: (productId: number, userId: number) => Promise<SeckillStock>;
+  initializeSeckillStock: (productId: number, stock: number) => Promise<SeckillStock>;
   auditContent: (bizId: string, content: string) => Promise<AiAuditResult>;
 };
 
@@ -162,6 +173,38 @@ function normalizeSeckillOrder(rawOrder: Partial<SeckillOrder> | null, productId
 }
 
 /**
+ * 构造空秒杀库存状态，表示 Redis 库存尚未初始化或查询失败。
+ */
+function emptySeckillStock(productId: number, userId: number | null): SeckillStock {
+  return {
+    productId,
+    redisStock: null,
+    userId,
+    reserved: false,
+    reservedText: '未排队',
+    reservationTtlSeconds: null
+  };
+}
+
+/**
+ * 将后端秒杀库存响应转换为前端展示模型。
+ */
+function normalizeSeckillStock(rawStock: Partial<SeckillStock> | null, productId: number, userId: number | null): SeckillStock {
+  if (!rawStock) {
+    return emptySeckillStock(productId, userId);
+  }
+  const reserved = Boolean(rawStock.reserved);
+  return {
+    productId: rawStock.productId ?? productId,
+    redisStock: rawStock.redisStock ?? null,
+    userId: rawStock.userId ?? userId,
+    reserved,
+    reservedText: reserved ? '已排队' : '未排队',
+    reservationTtlSeconds: rawStock.reservationTtlSeconds ?? null
+  };
+}
+
+/**
  * 创建 SeedMall API 客户端。
  */
 export function createSeedmallApi(gatewayUrl: string, httpClient: HttpClient = axios): SeedmallApi {
@@ -215,6 +258,34 @@ export function createSeedmallApi(gatewayUrl: string, httpClient: HttpClient = a
         return normalizeSeckillOrder(unwrapApiResponse(response), productId, userId);
       } catch {
         return emptySeckillOrder(productId, userId);
+      }
+    },
+
+    /**
+     * 查询 Redis 秒杀库存和当前用户排队状态。
+     */
+    async fetchSeckillStock(productId: number, userId: number) {
+      try {
+        const response = await httpClient.get<ApiResponse<Partial<SeckillStock> | null>>(
+          `${baseUrl}/seckill/${productId}/stock?userId=${userId}`
+        );
+        return normalizeSeckillStock(unwrapApiResponse(response), productId, userId);
+      } catch {
+        return emptySeckillStock(productId, userId);
+      }
+    },
+
+    /**
+     * 初始化 Redis 秒杀库存。
+     */
+    async initializeSeckillStock(productId: number, stock: number) {
+      try {
+        const response = await httpClient.post<ApiResponse<Partial<SeckillStock>>>(
+          `${baseUrl}/seckill/${productId}/stock?stock=${stock}`
+        );
+        return normalizeSeckillStock(unwrapApiResponse(response), productId, null);
+      } catch {
+        return normalizeSeckillStock({ productId, redisStock: stock, reserved: false }, productId, null);
       }
     },
 

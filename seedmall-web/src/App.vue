@@ -8,7 +8,8 @@ import {
   type FeedItem,
   type ProductItem,
   type SeckillOrder,
-  type SeckillResult
+  type SeckillResult,
+  type SeckillStock
 } from './api/seedmallApi';
 import { demoTimeline, findDemoProduct } from './mock/demoData';
 
@@ -21,6 +22,7 @@ const auditText = ref('这是一篇关于周末露营轻装清单的种草内容
 const auditResult = ref<AiAuditResult | null>(null);
 const seckillResult = ref<SeckillResult | null>(null);
 const seckillOrder = ref<SeckillOrder | null>(null);
+const seckillStock = ref<SeckillStock | null>(null);
 const customerQuestion = ref('这套商品适合新手露营吗？');
 const customerAnswer = ref('适合。当前演示客服会结合内容、商品和活动信息给出推荐理由。');
 const loading = ref(false);
@@ -45,6 +47,7 @@ async function refreshDashboard() {
     feedItems.value = await api.fetchFeed();
     selectedContent.value = feedItems.value[0] ?? null;
     selectedProduct.value = await api.fetchProduct(selectedContent.value?.productId ?? 101);
+    seckillStock.value = await api.fetchSeckillStock(selectedProduct.value.id, userId.value);
     modeText.value = '已连接或已降级';
   } finally {
     loading.value = false;
@@ -59,6 +62,7 @@ async function selectContent(item: FeedItem) {
   selectedProduct.value = await apiClient().fetchProduct(item.productId);
   seckillOrder.value = null;
   seckillResult.value = null;
+  seckillStock.value = await apiClient().fetchSeckillStock(item.productId, userId.value);
   auditText.value = item.summary;
 }
 
@@ -79,6 +83,20 @@ async function refreshSeckillOrder() {
 }
 
 /**
+ * 查询当前商品的 Redis 秒杀库存。
+ */
+async function refreshSeckillStock() {
+  seckillStock.value = await apiClient().fetchSeckillStock(selectedProduct.value.id, userId.value);
+}
+
+/**
+ * 使用数据库库存初始化 Redis 秒杀库存。
+ */
+async function initializeSelectedSeckillStock() {
+  seckillStock.value = await apiClient().initializeSeckillStock(selectedProduct.value.id, selectedProduct.value.stock);
+}
+
+/**
  * 发起秒杀请求并展示订单排队结果。
  */
 async function reserveSelectedProduct() {
@@ -86,6 +104,7 @@ async function reserveSelectedProduct() {
   try {
     seckillResult.value = await apiClient().reserveSeckill(selectedProduct.value.id, userId.value);
     await waitForOrderCreation();
+    await refreshSeckillStock();
     await refreshSeckillOrder();
   } finally {
     loading.value = false;
@@ -187,9 +206,25 @@ onMounted(() => {
               <strong>¥{{ selectedProduct.seckillPrice }}</strong>
             </div>
             <div>
-              <span>库存</span>
+              <span>数据库库存</span>
               <strong>{{ selectedProduct.stock }}</strong>
             </div>
+            <div>
+              <span>Redis 库存</span>
+              <strong>{{ seckillStock?.redisStock ?? '-' }}</strong>
+            </div>
+            <div>
+              <span>排队标记</span>
+              <strong>{{ seckillStock?.reservedText ?? '未查询' }}</strong>
+            </div>
+          </div>
+          <div class="stock-actions">
+            <button type="button" class="secondary-button compact-button" @click="initializeSelectedSeckillStock">
+              初始化 Redis 库存
+            </button>
+            <button type="button" class="secondary-button compact-button" @click="refreshSeckillStock">
+              刷新库存
+            </button>
           </div>
           <button type="button" class="primary-button" @click="reserveSelectedProduct">
             <Zap :size="18" />

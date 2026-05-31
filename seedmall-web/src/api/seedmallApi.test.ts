@@ -99,4 +99,68 @@ describe('createSeedmallApi', () => {
     expect(order.orderNo).toBe('');
     expect(order.statusText).toBe('暂无订单');
   });
+
+  /**
+   * 验证秒杀库存查询会返回 Redis 库存和排队状态。
+   */
+  it('fetches seckill stock status from gateway response', async () => {
+    const api = createSeedmallApi('http://localhost:9000', {
+      get: async <T = unknown>(url: string) => {
+        expect(url).toContain('/seckill/101/stock?userId=7');
+        return {
+          data: {
+            code: 0,
+            message: '成功',
+            data: {
+              productId: 101,
+              redisStock: 9,
+              userId: 7,
+              reserved: true,
+              reservationTtlSeconds: 120
+            }
+          } as T
+        };
+      },
+      post: async () => {
+        throw new Error('not used');
+      }
+    });
+
+    const stock = await api.fetchSeckillStock(101, 7);
+
+    expect(stock.redisStock).toBe(9);
+    expect(stock.reservedText).toBe('已排队');
+  });
+
+  /**
+   * 验证初始化秒杀库存会调用网关写入 Redis 库存。
+   */
+  it('initializes seckill stock through gateway', async () => {
+    const api = createSeedmallApi('http://localhost:9000', {
+      get: async () => {
+        throw new Error('not used');
+      },
+      post: async <T = unknown>(url: string) => {
+        expect(url).toContain('/seckill/101/stock?stock=20');
+        return {
+          data: {
+            code: 0,
+            message: '成功',
+            data: {
+              productId: 101,
+              redisStock: 20,
+              userId: null,
+              reserved: false,
+              reservationTtlSeconds: null
+            }
+          } as T
+        };
+      }
+    });
+
+    const stock = await api.initializeSeckillStock(101, 20);
+
+    expect(stock.redisStock).toBe(20);
+    expect(stock.reservedText).toBe('未排队');
+  });
 });
