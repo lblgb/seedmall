@@ -82,6 +82,21 @@ public class SeckillService {
     }
 
     /**
+     * 释放用户排队标记，并在标记存在时回补 Redis 秒杀库存。
+     */
+    public SeckillStockResponse releaseReservation(Long userId, Long productId) {
+        String reservationKey = reservationKey(userId, productId);
+        boolean reserved = Boolean.TRUE.equals(redisTemplate.hasKey(reservationKey));
+        if (!reserved) {
+            return queryStock(productId, userId);
+        }
+        redisTemplate.delete(reservationKey);
+        Long redisStock = redisTemplate.opsForValue().increment(stockKey(productId));
+        Integer stock = redisStock == null ? null : redisStock.intValue();
+        return new SeckillStockResponse(productId, stock, userId, false, null);
+    }
+
+    /**
      * 构造商品库存 key。
      */
     private String stockKey(Long productId) {

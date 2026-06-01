@@ -47,4 +47,13 @@ public class ProductController {
         productService.deductStock(request.productId(), request.quantity());
         return ApiResponse.ok();
     }
+
+    /**
+     * 恢复商品数据库库存。
+     */
+    @PostMapping("/stock/restore")
+    public ApiResponse<Void> restoreStock(@Valid @RequestBody DeductStockRequest request) {
+        productService.restoreStock(request.productId(), request.quantity());
+        return ApiResponse.ok();
+    }
 }

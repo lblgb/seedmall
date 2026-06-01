@@ -46,4 +46,12 @@ public class OrderController {
     public ApiResponse<OrderQueryResponse> querySeckillOrder(@RequestParam Long userId, @RequestParam Long productId) {
         return ApiResponse.ok(orderService.querySeckillOrder(userId, productId).orElse(null));
     }
+
+    /**
+     * 取消用户指定商品的秒杀订单。
+     */
+    @PostMapping("/seckill/cancel")
+    public ApiResponse<OrderQueryResponse> cancelSeckillOrder(@RequestParam Long userId, @RequestParam Long productId) {
+        return ApiResponse.ok(orderService.cancelSeckillOrder(userId, productId).orElse(null));
+    }
 }

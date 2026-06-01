@@ -53,6 +53,26 @@ public class OrderService {
     }
 
     /**
+     * 取消用户在指定商品上的秒杀订单，并在首次取消时恢复数据库库存。
+     */
+    public Optional<OrderQueryResponse> cancelSeckillOrder(Long userId, Long productId) {
+        Optional<TradeOrder> existingOrder = orderRepository.findByBusinessKey(userId, productId, DEFAULT_SOURCE);
+        if (existingOrder.isEmpty()) {
+            return Optional.empty();
+        }
+        TradeOrder order = existingOrder.get();
+        if (Integer.valueOf(2).equals(order.getStatus())) {
+            return Optional.of(toQueryResponse(order));
+        }
+        boolean canceled = orderRepository.cancelByBusinessKey(userId, productId, DEFAULT_SOURCE);
+        if (canceled) {
+            productStockClient.restoreStock(order.getProductId(), order.getQuantity());
+            order.setStatus(2);
+        }
+        return Optional.of(toQueryResponse(order));
+    }
+
+    /**
      * 构造并保存新订单。
      */
     private String createNewOrder(CreateOrderRequest request, String source) {

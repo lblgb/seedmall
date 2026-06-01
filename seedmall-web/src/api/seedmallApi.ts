@@ -79,6 +79,8 @@ export type SeedmallApi = {
   fetchSeckillOrder: (productId: number, userId: number) => Promise<SeckillOrder>;
   fetchSeckillStock: (productId: number, userId: number) => Promise<SeckillStock>;
   initializeSeckillStock: (productId: number, stock: number) => Promise<SeckillStock>;
+  cancelSeckillOrder: (productId: number, userId: number) => Promise<SeckillOrder>;
+  releaseSeckillReservation: (productId: number, userId: number) => Promise<SeckillStock>;
   auditContent: (bizId: string, content: string) => Promise<AiAuditResult>;
 };
 
@@ -286,6 +288,34 @@ export function createSeedmallApi(gatewayUrl: string, httpClient: HttpClient = a
         return normalizeSeckillStock(unwrapApiResponse(response), productId, null);
       } catch {
         return normalizeSeckillStock({ productId, redisStock: stock, reserved: false }, productId, null);
+      }
+    },
+
+    /**
+     * 取消当前用户的秒杀订单。
+     */
+    async cancelSeckillOrder(productId: number, userId: number) {
+      try {
+        const response = await httpClient.post<ApiResponse<Partial<SeckillOrder> | null>>(
+          `${baseUrl}/orders/seckill/cancel?userId=${userId}&productId=${productId}`
+        );
+        return normalizeSeckillOrder(unwrapApiResponse(response), productId, userId);
+      } catch {
+        return emptySeckillOrder(productId, userId);
+      }
+    },
+
+    /**
+     * 释放当前用户的秒杀排队标记。
+     */
+    async releaseSeckillReservation(productId: number, userId: number) {
+      try {
+        const response = await httpClient.post<ApiResponse<Partial<SeckillStock> | null>>(
+          `${baseUrl}/seckill/${productId}/cancel?userId=${userId}`
+        );
+        return normalizeSeckillStock(unwrapApiResponse(response), productId, userId);
+      } catch {
+        return emptySeckillStock(productId, userId);
       }
     },
 

@@ -380,6 +380,10 @@ textarea {
   margin: 0;
 }
 
+.danger-button {
+  background: #8a3b32;
+}
+
 .audit-result {
   display: block;
   border-left: 4px solid #2f7d55;

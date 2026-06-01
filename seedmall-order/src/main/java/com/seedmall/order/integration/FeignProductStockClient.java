@@ -29,4 +29,12 @@ public class FeignProductStockClient implements ProductStockClient {
     public void deductStock(Long productId, Integer quantity) {
         productFeignClient.deductStock(new DeductStockRequest(productId, quantity));
     }
+
+    /**
+     * 调用商品服务恢复数据库库存。
+     */
+    @Override
+    public void restoreStock(Long productId, Integer quantity) {
+        productFeignClient.restoreStock(new DeductStockRequest(productId, quantity));
+    }
 }

@@ -4,6 +4,7 @@
 package com.seedmall.order.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.seedmall.order.entity.TradeOrder;
 import com.seedmall.order.mapper.TradeOrderMapper;
 import org.springframework.stereotype.Repository;
@@ -44,5 +45,19 @@ public class MyBatisOrderRepository implements OrderRepository {
     @Override
     public void save(TradeOrder order) {
         tradeOrderMapper.insert(order);
+    }
+
+    /**
+     * 仅将已创建状态的订单更新为已取消。
+     */
+    @Override
+    public boolean cancelByBusinessKey(Long userId, Long productId, String source) {
+        LambdaUpdateWrapper<TradeOrder> wrapper = new LambdaUpdateWrapper<TradeOrder>()
+                .eq(TradeOrder::getUserId, userId)
+                .eq(TradeOrder::getProductId, productId)
+                .eq(TradeOrder::getSource, source)
+                .eq(TradeOrder::getStatus, 0)
+                .set(TradeOrder::getStatus, 2);
+        return tradeOrderMapper.update(null, wrapper) > 0;
     }
 }

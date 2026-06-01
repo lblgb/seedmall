@@ -21,4 +21,9 @@ public interface OrderRepository {
      * 保存订单。
      */
     void save(TradeOrder order);
+
+    /**
+     * 取消已创建的业务订单。
+     */
+    boolean cancelByBusinessKey(Long userId, Long productId, String source);
 }

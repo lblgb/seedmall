@@ -21,4 +21,9 @@ public interface ProductRepository {
      * 在库存充足时原子扣减库存。
      */
     boolean deductStock(Long productId, Integer quantity);
+
+    /**
+     * 恢复商品库存。
+     */
+    void restoreStock(Long productId, Integer quantity);
 }

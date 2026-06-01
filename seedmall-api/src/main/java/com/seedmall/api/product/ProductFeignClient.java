@@ -20,4 +20,10 @@ public interface ProductFeignClient {
      */
     @PostMapping("/stock/deduct")
     ApiResponse<Void> deductStock(@Valid @RequestBody DeductStockRequest request);
+
+    /**
+     * 恢复商品数据库库存。
+     */
+    @PostMapping("/stock/restore")
+    ApiResponse<Void> restoreStock(@Valid @RequestBody DeductStockRequest request);
 }

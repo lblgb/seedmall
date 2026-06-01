@@ -51,4 +51,12 @@ public class SeckillController {
     public ApiResponse<SeckillStockResponse> initializeStock(@PathVariable Long productId, @RequestParam Integer stock) {
         return ApiResponse.ok(seckillService.initializeStock(productId, stock));
     }
+
+    /**
+     * 释放用户秒杀排队标记并回补 Redis 库存。
+     */
+    @PostMapping("/seckill/{productId}/cancel")
+    public ApiResponse<SeckillStockResponse> releaseReservation(@PathVariable Long productId, @RequestParam Long userId) {
+        return ApiResponse.ok(seckillService.releaseReservation(userId, productId));
+    }
 }

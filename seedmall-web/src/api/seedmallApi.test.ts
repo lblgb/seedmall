@@ -163,4 +163,69 @@ describe('createSeedmallApi', () => {
     expect(stock.redisStock).toBe(20);
     expect(stock.reservedText).toBe('未排队');
   });
+
+  /**
+   * 验证取消秒杀订单会调用订单取消接口。
+   */
+  it('cancels seckill order through gateway', async () => {
+    const api = createSeedmallApi('http://localhost:9000', {
+      get: async () => {
+        throw new Error('not used');
+      },
+      post: async <T = unknown>(url: string) => {
+        expect(url).toContain('/orders/seckill/cancel?userId=7&productId=101');
+        return {
+          data: {
+            code: 0,
+            message: '成功',
+            data: {
+              orderNo: 'SM_EXISTING',
+              userId: 7,
+              productId: 101,
+              quantity: 1,
+              status: 2,
+              source: 'SECKILL'
+            }
+          } as T
+        };
+      }
+    });
+
+    const order = await api.cancelSeckillOrder(101, 7);
+
+    expect(order.orderNo).toBe('SM_EXISTING');
+    expect(order.statusText).toBe('已取消');
+  });
+
+  /**
+   * 验证释放秒杀排队标记会调用秒杀取消接口。
+   */
+  it('releases seckill reservation through gateway', async () => {
+    const api = createSeedmallApi('http://localhost:9000', {
+      get: async () => {
+        throw new Error('not used');
+      },
+      post: async <T = unknown>(url: string) => {
+        expect(url).toContain('/seckill/101/cancel?userId=7');
+        return {
+          data: {
+            code: 0,
+            message: '成功',
+            data: {
+              productId: 101,
+              redisStock: 10,
+              userId: 7,
+              reserved: false,
+              reservationTtlSeconds: null
+            }
+          } as T
+        };
+      }
+    });
+
+    const stock = await api.releaseSeckillReservation(101, 7);
+
+    expect(stock.redisStock).toBe(10);
+    expect(stock.reservedText).toBe('未排队');
+  });
 });

@@ -12,4 +12,9 @@ public interface ProductStockClient {
      * 扣减商品数据库库存。
      */
     void deductStock(Long productId, Integer quantity);
+
+    /**
+     * 恢复商品数据库库存。
+     */
+    void restoreStock(Long productId, Integer quantity);
 }

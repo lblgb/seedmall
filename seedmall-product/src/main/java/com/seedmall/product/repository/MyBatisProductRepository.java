@@ -44,4 +44,15 @@ public class MyBatisProductRepository implements ProductRepository {
                 .setSql("stock = stock - " + quantity);
         return productMapper.update(null, wrapper) > 0;
     }
+
+    /**
+     * 恢复商品库存。
+     */
+    @Override
+    public void restoreStock(Long productId, Integer quantity) {
+        LambdaUpdateWrapper<Product> wrapper = new LambdaUpdateWrapper<Product>()
+                .eq(Product::getId, productId)
+                .setSql("stock = stock + " + quantity);
+        productMapper.update(null, wrapper);
+    }
 }

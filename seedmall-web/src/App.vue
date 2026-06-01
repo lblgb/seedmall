@@ -97,6 +97,21 @@ async function initializeSelectedSeckillStock() {
 }
 
 /**
+ * 取消秒杀订单，并释放 Redis 排队标记。
+ */
+async function cancelSelectedSeckillOrder() {
+  loading.value = true;
+  try {
+    const api = apiClient();
+    seckillOrder.value = await api.cancelSeckillOrder(selectedProduct.value.id, userId.value);
+    seckillStock.value = await api.releaseSeckillReservation(selectedProduct.value.id, userId.value);
+    selectedProduct.value = await api.fetchProduct(selectedProduct.value.id);
+  } finally {
+    loading.value = false;
+  }
+}
+
+/**
  * 发起秒杀请求并展示订单排队结果。
  */
 async function reserveSelectedProduct() {
@@ -246,6 +261,9 @@ onMounted(() => {
             <button type="button" class="secondary-button compact-button" @click="refreshSeckillOrder">
               <RefreshCw :size="16" />
               刷新订单
+            </button>
+            <button type="button" class="secondary-button compact-button danger-button" @click="cancelSelectedSeckillOrder">
+              取消秒杀订单
             </button>
           </div>
         </div>

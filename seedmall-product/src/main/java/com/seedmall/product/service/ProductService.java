@@ -40,4 +40,14 @@ public class ProductService {
             throw new BizException(409, "商品库存不足");
         }
     }
+
+    /**
+     * 恢复商品数据库库存。
+     */
+    public void restoreStock(Long productId, Integer quantity) {
+        if (quantity == null || quantity < 1) {
+            throw new BizException(400, "恢复库存数量必须大于 0");
+        }
+        productRepository.restoreStock(productId, quantity);
+    }
 }

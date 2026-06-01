@@ -49,6 +49,20 @@ class ProductServiceTest {
     }
 
     /**
+     * 恢复库存时应增加数据库库存。
+     */
+    @Test
+    void shouldRestoreStock() {
+        FakeProductRepository repository = new FakeProductRepository();
+        repository.products.put(101L, productOf(101L, 8));
+        ProductService service = new ProductService(repository);
+
+        service.restoreStock(101L, 2);
+
+        assertThat(repository.products.get(101L).getStock()).isEqualTo(10);
+    }
+
+    /**
      * 测试用商品仓储。
      */
     private static final class FakeProductRepository implements ProductRepository {
@@ -74,6 +88,15 @@ class ProductServiceTest {
             }
             product.setStock(product.getStock() - quantity);
             return true;
+        }
+
+        /**
+         * 恢复商品库存。
+         */
+        @Override
+        public void restoreStock(Long productId, Integer quantity) {
+            Product product = products.get(productId);
+            product.setStock(product.getStock() + quantity);
         }
     }
 

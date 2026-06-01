@@ -129,6 +129,45 @@ class OrderServiceTest {
     }
 
     /**
+     * 取消已创建的秒杀订单时应更新订单状态并恢复数据库库存。
+     */
+    @Test
+    void shouldCancelCreatedSeckillOrderAndRestoreProductStock() {
+        FakeOrderRepository repository = new FakeOrderRepository();
+        repository.existingOrder = orderOf("SM_EXISTING", 7L, 101L, "SECKILL");
+        repository.existingOrder.setStatus(0);
+        repository.existingOrder.setQuantity(1);
+        FakeProductStockClient productStockClient = new FakeProductStockClient();
+        OrderService service = new OrderService(repository, productStockClient);
+
+        Optional<OrderQueryResponse> response = service.cancelSeckillOrder(7L, 101L);
+
+        assertThat(response).isPresent();
+        assertThat(response.get().status()).isEqualTo(2);
+        assertThat(repository.existingOrder.getStatus()).isEqualTo(2);
+        assertThat(productStockClient.restoreRequests).containsExactly("101:1");
+    }
+
+    /**
+     * 重复取消已取消订单时不应重复恢复数据库库存。
+     */
+    @Test
+    void shouldNotRestoreProductStockWhenOrderAlreadyCanceled() {
+        FakeOrderRepository repository = new FakeOrderRepository();
+        repository.existingOrder = orderOf("SM_CANCELED", 7L, 101L, "SECKILL");
+        repository.existingOrder.setStatus(2);
+        repository.existingOrder.setQuantity(1);
+        FakeProductStockClient productStockClient = new FakeProductStockClient();
+        OrderService service = new OrderService(repository, productStockClient);
+
+        Optional<OrderQueryResponse> response = service.cancelSeckillOrder(7L, 101L);
+
+        assertThat(response).isPresent();
+        assertThat(response.get().status()).isEqualTo(2);
+        assertThat(productStockClient.restoreRequests).isEmpty();
+    }
+
+    /**
      * 测试用内存仓储，记录服务写入的订单对象。
      */
     private static final class FakeOrderRepository implements OrderRepository {
@@ -164,6 +203,19 @@ class OrderServiceTest {
             }
             savedOrders.add(order);
         }
+
+        /**
+         * 取消已创建的业务订单。
+         */
+        @Override
+        public boolean cancelByBusinessKey(Long userId, Long productId, String source) {
+            Optional<TradeOrder> order = findByBusinessKey(userId, productId, source);
+            if (order.isEmpty() || !Integer.valueOf(0).equals(order.get().getStatus())) {
+                return false;
+            }
+            order.get().setStatus(2);
+            return true;
+        }
     }
 
     /**
@@ -172,6 +224,7 @@ class OrderServiceTest {
     private static final class FakeProductStockClient implements ProductStockClient {
 
         private final List<String> deductRequests = new ArrayList<>();
+        private final List<String> restoreRequests = new ArrayList<>();
 
         /**
          * 记录扣减商品库存的请求。
@@ -179,6 +232,14 @@ class OrderServiceTest {
         @Override
         public void deductStock(Long productId, Integer quantity) {
             deductRequests.add(productId + ":" + quantity);
+        }
+
+        /**
+         * 记录恢复商品库存的请求。
+         */
+        @Override
+        public void restoreStock(Long productId, Integer quantity) {
+            restoreRequests.add(productId + ":" + quantity);
         }
     }
 
