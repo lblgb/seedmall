@@ -168,6 +168,58 @@ class OrderServiceTest {
     }
 
     /**
+     * 支付已创建的秒杀订单时应将订单状态推进到已支付。
+     */
+    @Test
+    void shouldPayCreatedSeckillOrder() {
+        FakeOrderRepository repository = new FakeOrderRepository();
+        repository.existingOrder = orderOf("SM_CREATED", 7L, 101L, "SECKILL");
+        repository.existingOrder.setStatus(0);
+        repository.existingOrder.setQuantity(1);
+        OrderService service = new OrderService(repository, new FakeProductStockClient());
+
+        Optional<OrderQueryResponse> response = service.paySeckillOrder(7L, 101L);
+
+        assertThat(response).isPresent();
+        assertThat(response.get().status()).isEqualTo(1);
+        assertThat(repository.existingOrder.getStatus()).isEqualTo(1);
+    }
+
+    /**
+     * 重复支付已支付订单时应保持幂等，不再重复推进状态。
+     */
+    @Test
+    void shouldKeepPaidOrderWhenPayingAgain() {
+        FakeOrderRepository repository = new FakeOrderRepository();
+        repository.existingOrder = orderOf("SM_PAID", 7L, 101L, "SECKILL");
+        repository.existingOrder.setStatus(1);
+        repository.existingOrder.setQuantity(1);
+        OrderService service = new OrderService(repository, new FakeProductStockClient());
+
+        Optional<OrderQueryResponse> response = service.paySeckillOrder(7L, 101L);
+
+        assertThat(response).isPresent();
+        assertThat(response.get().status()).isEqualTo(1);
+    }
+
+    /**
+     * 取消后的订单不允许再支付，应保持取消状态。
+     */
+    @Test
+    void shouldNotPayCanceledSeckillOrder() {
+        FakeOrderRepository repository = new FakeOrderRepository();
+        repository.existingOrder = orderOf("SM_CANCELED", 7L, 101L, "SECKILL");
+        repository.existingOrder.setStatus(2);
+        repository.existingOrder.setQuantity(1);
+        OrderService service = new OrderService(repository, new FakeProductStockClient());
+
+        Optional<OrderQueryResponse> response = service.paySeckillOrder(7L, 101L);
+
+        assertThat(response).isPresent();
+        assertThat(response.get().status()).isEqualTo(2);
+    }
+
+    /**
      * 测试用内存仓储，记录服务写入的订单对象。
      */
     private static final class FakeOrderRepository implements OrderRepository {
@@ -214,6 +266,19 @@ class OrderServiceTest {
                 return false;
             }
             order.get().setStatus(2);
+            return true;
+        }
+
+        /**
+         * 支付已创建的业务订单。
+         */
+        @Override
+        public boolean payByBusinessKey(Long userId, Long productId, String source) {
+            Optional<TradeOrder> order = findByBusinessKey(userId, productId, source);
+            if (order.isEmpty() || !Integer.valueOf(0).equals(order.get().getStatus())) {
+                return false;
+            }
+            order.get().setStatus(1);
             return true;
         }
     }

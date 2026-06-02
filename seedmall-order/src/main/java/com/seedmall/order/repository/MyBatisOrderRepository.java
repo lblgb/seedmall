@@ -60,4 +60,18 @@ public class MyBatisOrderRepository implements OrderRepository {
                 .set(TradeOrder::getStatus, 2);
         return tradeOrderMapper.update(null, wrapper) > 0;
     }
+
+    /**
+     * 仅将已创建状态的订单更新为已支付。
+     */
+    @Override
+    public boolean payByBusinessKey(Long userId, Long productId, String source) {
+        LambdaUpdateWrapper<TradeOrder> wrapper = new LambdaUpdateWrapper<TradeOrder>()
+                .eq(TradeOrder::getUserId, userId)
+                .eq(TradeOrder::getProductId, productId)
+                .eq(TradeOrder::getSource, source)
+                .eq(TradeOrder::getStatus, 0)
+                .set(TradeOrder::getStatus, 1);
+        return tradeOrderMapper.update(null, wrapper) > 0;
+    }
 }

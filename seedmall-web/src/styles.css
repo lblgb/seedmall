@@ -384,6 +384,10 @@ textarea {
   background: #8a3b32;
 }
 
+.success-button {
+  background: #2f684f;
+}
+
 .audit-result {
   display: block;
   border-left: 4px solid #2f7d55;

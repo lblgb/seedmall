@@ -34,4 +34,10 @@ public interface OrderFeignClient {
      */
     @PostMapping("/seckill/cancel")
     ApiResponse<OrderQueryResponse> cancelSeckillOrder(@RequestParam Long userId, @RequestParam Long productId);
+
+    /**
+     * 支付用户指定商品的秒杀订单。
+     */
+    @PostMapping("/seckill/pay")
+    ApiResponse<OrderQueryResponse> paySeckillOrder(@RequestParam Long userId, @RequestParam Long productId);
 }

@@ -200,6 +200,39 @@ describe('createSeedmallApi', () => {
   /**
    * 验证释放秒杀排队标记会调用秒杀取消接口。
    */
+  /**
+   * 验证支付秒杀订单会调用订单支付接口。
+   */
+  it('pays seckill order through gateway', async () => {
+    const api = createSeedmallApi('http://localhost:9000', {
+      get: async () => {
+        throw new Error('not used');
+      },
+      post: async <T = unknown>(url: string) => {
+        expect(url).toContain('/orders/seckill/pay?userId=7&productId=101');
+        return {
+          data: {
+            code: 0,
+            message: '成功',
+            data: {
+              orderNo: 'SM_EXISTING',
+              userId: 7,
+              productId: 101,
+              quantity: 1,
+              status: 1,
+              source: 'SECKILL'
+            }
+          } as T
+        };
+      }
+    });
+
+    const order = await api.paySeckillOrder(101, 7);
+
+    expect(order.orderNo).toBe('SM_EXISTING');
+    expect(order.status).toBe(1);
+  });
+
   it('releases seckill reservation through gateway', async () => {
     const api = createSeedmallApi('http://localhost:9000', {
       get: async () => {

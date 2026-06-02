@@ -112,6 +112,18 @@ async function cancelSelectedSeckillOrder() {
 }
 
 /**
+ * 支付当前秒杀订单，并刷新页面上的订单状态。
+ */
+async function paySelectedSeckillOrder() {
+  loading.value = true;
+  try {
+    seckillOrder.value = await apiClient().paySeckillOrder(selectedProduct.value.id, userId.value);
+  } finally {
+    loading.value = false;
+  }
+}
+
+/**
  * 发起秒杀请求并展示订单排队结果。
  */
 async function reserveSelectedProduct() {
@@ -261,6 +273,9 @@ onMounted(() => {
             <button type="button" class="secondary-button compact-button" @click="refreshSeckillOrder">
               <RefreshCw :size="16" />
               刷新订单
+            </button>
+            <button type="button" class="secondary-button compact-button success-button" @click="paySelectedSeckillOrder">
+              支付订单
             </button>
             <button type="button" class="secondary-button compact-button danger-button" @click="cancelSelectedSeckillOrder">
               取消秒杀订单

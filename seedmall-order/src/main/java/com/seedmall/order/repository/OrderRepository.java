@@ -26,4 +26,9 @@ public interface OrderRepository {
      * 取消已创建的业务订单。
      */
     boolean cancelByBusinessKey(Long userId, Long productId, String source);
+
+    /**
+     * 支付已创建的业务订单。
+     */
+    boolean payByBusinessKey(Long userId, Long productId, String source);
 }

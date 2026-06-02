@@ -75,6 +75,25 @@ public class OrderService {
     /**
      * 构造并保存新订单。
      */
+    /**
+     * 支付用户在指定商品上的秒杀订单，重复支付时保持当前已支付状态。
+     */
+    public Optional<OrderQueryResponse> paySeckillOrder(Long userId, Long productId) {
+        Optional<TradeOrder> existingOrder = orderRepository.findByBusinessKey(userId, productId, DEFAULT_SOURCE);
+        if (existingOrder.isEmpty()) {
+            return Optional.empty();
+        }
+        TradeOrder order = existingOrder.get();
+        if (!Integer.valueOf(0).equals(order.getStatus())) {
+            return Optional.of(toQueryResponse(order));
+        }
+        boolean paid = orderRepository.payByBusinessKey(userId, productId, DEFAULT_SOURCE);
+        if (paid) {
+            order.setStatus(1);
+        }
+        return Optional.of(toQueryResponse(order));
+    }
+
     private String createNewOrder(CreateOrderRequest request, String source) {
         TradeOrder order = new TradeOrder();
         order.setOrderNo(nextOrderNo(request.userId()));
