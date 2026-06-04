@@ -233,6 +233,17 @@ describe('createSeedmallApi', () => {
     expect(order.status).toBe(1);
   });
 
+  /**
+   * 验证支付失败时不会把订单误展示为暂无订单。
+   */
+  it('returns payment failed state when pay request fails', async () => {
+    const api = createSeedmallApi('http://localhost:9000', createFailingHttpClient());
+
+    const order = await api.paySeckillOrder(101, 7);
+
+    expect(order.statusText).toBe('支付失败，请刷新订单');
+  });
+
   it('releases seckill reservation through gateway', async () => {
     const api = createSeedmallApi('http://localhost:9000', {
       get: async () => {

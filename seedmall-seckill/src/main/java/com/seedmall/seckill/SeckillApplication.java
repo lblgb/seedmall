@@ -5,11 +5,13 @@ package com.seedmall.seckill;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
 /**
  * 秒杀服务应用。
  */
 @SpringBootApplication(scanBasePackages = "com.seedmall")
+@EnableFeignClients(basePackages = "com.seedmall.api")
 public class SeckillApplication {
 
     /**

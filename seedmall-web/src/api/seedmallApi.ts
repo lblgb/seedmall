@@ -157,6 +157,21 @@ function emptySeckillOrder(productId: number, userId: number): SeckillOrder {
 }
 
 /**
+ * 构造支付失败状态，避免页面把失败误显示成暂无订单。
+ */
+function failedPaymentOrder(productId: number, userId: number): SeckillOrder {
+  return {
+    orderNo: '',
+    userId,
+    productId,
+    quantity: 0,
+    status: -2,
+    statusText: '支付失败，请刷新订单',
+    source: 'SECKILL'
+  };
+}
+
+/**
  * 将后端订单响应转换为前端展示模型。
  */
 function normalizeSeckillOrder(rawOrder: Partial<SeckillOrder> | null, productId: number, userId: number): SeckillOrder {
@@ -319,7 +334,7 @@ export function createSeedmallApi(gatewayUrl: string, httpClient: HttpClient = a
         );
         return normalizeSeckillOrder(unwrapApiResponse(response), productId, userId);
       } catch {
-        return emptySeckillOrder(productId, userId);
+        return failedPaymentOrder(productId, userId);
       }
     },
 

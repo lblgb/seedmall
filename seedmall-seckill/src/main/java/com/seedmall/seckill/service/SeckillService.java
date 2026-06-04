@@ -5,14 +5,17 @@ package com.seedmall.seckill.service;
 
 import com.seedmall.api.mq.RocketMqTopics;
 import com.seedmall.api.order.CreateOrderRequest;
+import com.seedmall.api.order.OrderQueryResponse;
 import com.seedmall.api.seckill.SeckillStockResponse;
 import com.seedmall.common.exception.BizException;
+import com.seedmall.seckill.integration.OrderStatusClient;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.Optional;
 
 /**
  * 秒杀业务服务。
@@ -23,19 +26,29 @@ public class SeckillService {
     private static final Duration RESERVATION_TTL = Duration.ofMinutes(30);
     private final StringRedisTemplate redisTemplate;
     private final RocketMQTemplate rocketMQTemplate;
+    private final OrderStatusClient orderStatusClient;
 
     /**
      * 注入 Redis 与 MQ 模板。
      */
-    public SeckillService(StringRedisTemplate redisTemplate, RocketMQTemplate rocketMQTemplate) {
+    public SeckillService(StringRedisTemplate redisTemplate, RocketMQTemplate rocketMQTemplate, OrderStatusClient orderStatusClient) {
         this.redisTemplate = redisTemplate;
         this.rocketMQTemplate = rocketMQTemplate;
+        this.orderStatusClient = orderStatusClient;
     }
 
     /**
      * 执行秒杀预扣库存并发送异步下单消息。
      */
     public String reserve(Long userId, Long productId) {
+        Optional<OrderQueryResponse> existingOrder = orderStatusClient.querySeckillOrder(userId, productId);
+        if (existingOrder.isPresent() && Integer.valueOf(0).equals(existingOrder.get().status())) {
+            return "已有待支付订单";
+        }
+        if (existingOrder.isPresent() && Integer.valueOf(1).equals(existingOrder.get().status())) {
+            return "已有已支付订单";
+        }
+
         String reservationKey = reservationKey(userId, productId);
         ValueOperations<String, String> operations = redisTemplate.opsForValue();
         Boolean reserved = operations.setIfAbsent(reservationKey, "1", RESERVATION_TTL);

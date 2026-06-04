@@ -5,14 +5,17 @@ package com.seedmall.seckill.service;
 
 import com.seedmall.api.mq.RocketMqTopics;
 import com.seedmall.api.order.CreateOrderRequest;
+import com.seedmall.api.order.OrderQueryResponse;
 import com.seedmall.api.seckill.SeckillStockResponse;
 import com.seedmall.common.exception.BizException;
+import com.seedmall.seckill.integration.OrderStatusClient;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Duration;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -56,6 +59,37 @@ class SeckillServiceTest {
         String result = fixture.service.reserve(7L, 101L);
 
         assertThat(result).isEqualTo("已在排队中");
+        verify(fixture.valueOperations, never()).decrement("seckill:stock:101");
+        verify(fixture.rocketMQTemplate, never()).convertAndSend(eq(RocketMqTopics.ORDER_CREATE), any(CreateOrderRequest.class));
+    }
+
+    /**
+     * 已有待支付订单时不应再次扣减 Redis 库存。
+     */
+    @Test
+    void shouldSkipRedisStockWhenCreatedOrderAlreadyExists() {
+        TestFixture fixture = new TestFixture();
+        fixture.existingOrder = Optional.of(orderWithStatus(0));
+
+        String result = fixture.service.reserve(7L, 101L);
+
+        assertThat(result).isEqualTo("已有待支付订单");
+        verify(fixture.valueOperations, never()).setIfAbsent("seckill:reservation:101:7", "1", Duration.ofMinutes(30));
+        verify(fixture.valueOperations, never()).decrement("seckill:stock:101");
+        verify(fixture.rocketMQTemplate, never()).convertAndSend(eq(RocketMqTopics.ORDER_CREATE), any(CreateOrderRequest.class));
+    }
+
+    /**
+     * 已有已支付订单时不应再次扣减 Redis 库存。
+     */
+    @Test
+    void shouldSkipRedisStockWhenPaidOrderAlreadyExists() {
+        TestFixture fixture = new TestFixture();
+        fixture.existingOrder = Optional.of(orderWithStatus(1));
+
+        String result = fixture.service.reserve(7L, 101L);
+
+        assertThat(result).isEqualTo("已有已支付订单");
         verify(fixture.valueOperations, never()).decrement("seckill:stock:101");
         verify(fixture.rocketMQTemplate, never()).convertAndSend(eq(RocketMqTopics.ORDER_CREATE), any(CreateOrderRequest.class));
     }
@@ -153,7 +187,9 @@ class SeckillServiceTest {
         @SuppressWarnings("unchecked")
         private final ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         private final RocketMQTemplate rocketMQTemplate = mock(RocketMQTemplate.class);
-        private final SeckillService service = new SeckillService(redisTemplate, rocketMQTemplate);
+        private Optional<OrderQueryResponse> existingOrder = Optional.empty();
+        private final OrderStatusClient orderStatusClient = (userId, productId) -> existingOrder;
+        private final SeckillService service = new SeckillService(redisTemplate, rocketMQTemplate, orderStatusClient);
 
         /**
          * 初始化 Redis value 操作对象。
@@ -161,5 +197,12 @@ class SeckillServiceTest {
         private TestFixture() {
             when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         }
+    }
+
+    /**
+     * 构造指定状态的秒杀订单响应。
+     */
+    private static OrderQueryResponse orderWithStatus(Integer status) {
+        return new OrderQueryResponse("SM_EXISTING", 7L, 101L, 1, status, "SECKILL");
     }
 }

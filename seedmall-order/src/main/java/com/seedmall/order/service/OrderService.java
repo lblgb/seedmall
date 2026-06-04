@@ -39,9 +39,15 @@ public class OrderService {
      */
     public String create(CreateOrderRequest request) {
         String source = normalizeSource(request.source());
-        return orderRepository.findByBusinessKey(request.userId(), request.productId(), source)
-                .map(TradeOrder::getOrderNo)
-                .orElseGet(() -> createNewOrder(request, source));
+        Optional<TradeOrder> existingOrder = orderRepository.findByBusinessKey(request.userId(), request.productId(), source);
+        if (existingOrder.isEmpty()) {
+            return createNewOrder(request, source);
+        }
+        TradeOrder order = existingOrder.get();
+        if (Integer.valueOf(2).equals(order.getStatus())) {
+            return reactivateCanceledOrder(request, source, order);
+        }
+        return order.getOrderNo();
     }
 
     /**
@@ -73,9 +79,6 @@ public class OrderService {
     }
 
     /**
-     * 构造并保存新订单。
-     */
-    /**
      * 支付用户在指定商品上的秒杀订单，重复支付时保持当前已支付状态。
      */
     public Optional<OrderQueryResponse> paySeckillOrder(Long userId, Long productId) {
@@ -94,6 +97,9 @@ public class OrderService {
         return Optional.of(toQueryResponse(order));
     }
 
+    /**
+     * 构造并保存新订单。
+     */
     private String createNewOrder(CreateOrderRequest request, String source) {
         TradeOrder order = new TradeOrder();
         order.setOrderNo(nextOrderNo(request.userId()));
@@ -109,6 +115,27 @@ public class OrderService {
             return orderRepository.findByBusinessKey(request.userId(), request.productId(), source)
                     .map(TradeOrder::getOrderNo)
                     .orElseThrow(() -> ex);
+        }
+        return order.getOrderNo();
+    }
+
+    /**
+     * 重新激活已取消订单，并重新扣减数据库库存。
+     */
+    private String reactivateCanceledOrder(CreateOrderRequest request, String source, TradeOrder order) {
+        String newOrderNo = nextOrderNo(request.userId());
+        boolean reactivated = orderRepository.reactivateCanceledByBusinessKey(
+                request.userId(),
+                request.productId(),
+                source,
+                newOrderNo,
+                request.quantity()
+        );
+        if (reactivated) {
+            productStockClient.deductStock(request.productId(), request.quantity());
+            order.setOrderNo(newOrderNo);
+            order.setQuantity(request.quantity());
+            order.setStatus(0);
         }
         return order.getOrderNo();
     }

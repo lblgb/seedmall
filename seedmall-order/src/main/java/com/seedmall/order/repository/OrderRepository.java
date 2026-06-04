@@ -31,4 +31,9 @@ public interface OrderRepository {
      * 支付已创建的业务订单。
      */
     boolean payByBusinessKey(Long userId, Long productId, String source);
+
+    /**
+     * 重新激活已取消的业务订单。
+     */
+    boolean reactivateCanceledByBusinessKey(Long userId, Long productId, String source, String orderNo, Integer quantity);
 }

@@ -68,6 +68,27 @@ class OrderServiceTest {
     }
 
     /**
+     * 取消后的秒杀订单再次创建时应重新激活订单，并生成新的订单号和扣减数据库库存。
+     */
+    @Test
+    void shouldReactivateCanceledOrderWhenCreatingAgain() {
+        FakeOrderRepository repository = new FakeOrderRepository();
+        repository.existingOrder = orderOf("SM_CANCELED", 7L, 101L, "SECKILL");
+        repository.existingOrder.setStatus(2);
+        repository.existingOrder.setQuantity(1);
+        FakeProductStockClient productStockClient = new FakeProductStockClient();
+        OrderService service = new OrderService(repository, productStockClient);
+
+        String orderNo = service.create(new CreateOrderRequest(7L, 101L, 1, "SECKILL"));
+
+        assertThat(orderNo).startsWith("SM");
+        assertThat(orderNo).isNotEqualTo("SM_CANCELED");
+        assertThat(repository.existingOrder.getOrderNo()).isEqualTo(orderNo);
+        assertThat(repository.existingOrder.getStatus()).isZero();
+        assertThat(productStockClient.deductRequests).containsExactly("101:1");
+    }
+
+    /**
      * 并发插入撞唯一索引时应重新读取已有订单号。
      */
     @Test
@@ -279,6 +300,21 @@ class OrderServiceTest {
                 return false;
             }
             order.get().setStatus(1);
+            return true;
+        }
+
+        /**
+         * 重新激活已取消的业务订单。
+         */
+        @Override
+        public boolean reactivateCanceledByBusinessKey(Long userId, Long productId, String source, String orderNo, Integer quantity) {
+            Optional<TradeOrder> order = findByBusinessKey(userId, productId, source);
+            if (order.isEmpty() || !Integer.valueOf(2).equals(order.get().getStatus())) {
+                return false;
+            }
+            order.get().setOrderNo(orderNo);
+            order.get().setQuantity(quantity);
+            order.get().setStatus(0);
             return true;
         }
     }

@@ -74,4 +74,20 @@ public class MyBatisOrderRepository implements OrderRepository {
                 .set(TradeOrder::getStatus, 1);
         return tradeOrderMapper.update(null, wrapper) > 0;
     }
+
+    /**
+     * 仅将已取消状态的订单重新激活为已创建。
+     */
+    @Override
+    public boolean reactivateCanceledByBusinessKey(Long userId, Long productId, String source, String orderNo, Integer quantity) {
+        LambdaUpdateWrapper<TradeOrder> wrapper = new LambdaUpdateWrapper<TradeOrder>()
+                .eq(TradeOrder::getUserId, userId)
+                .eq(TradeOrder::getProductId, productId)
+                .eq(TradeOrder::getSource, source)
+                .eq(TradeOrder::getStatus, 2)
+                .set(TradeOrder::getOrderNo, orderNo)
+                .set(TradeOrder::getQuantity, quantity)
+                .set(TradeOrder::getStatus, 0);
+        return tradeOrderMapper.update(null, wrapper) > 0;
+    }
 }
