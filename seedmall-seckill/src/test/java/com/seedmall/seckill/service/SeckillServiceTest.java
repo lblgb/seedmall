@@ -179,6 +179,25 @@ class SeckillServiceTest {
     }
 
     /**
+     * 已支付订单释放排队标记时不应回补 Redis 秒杀库存。
+     */
+    @Test
+    void shouldSkipRedisStockRestoreWhenPaidOrderExists() {
+        TestFixture fixture = new TestFixture();
+        fixture.existingOrder = Optional.of(orderWithStatus(1));
+        when(fixture.valueOperations.get("seckill:stock:101")).thenReturn("2");
+        when(fixture.redisTemplate.hasKey("seckill:reservation:101:7")).thenReturn(true);
+        when(fixture.redisTemplate.getExpire("seckill:reservation:101:7")).thenReturn(120L);
+
+        SeckillStockResponse response = fixture.service.releaseReservation(7L, 101L);
+
+        verify(fixture.valueOperations, never()).increment("seckill:stock:101");
+        verify(fixture.redisTemplate, never()).delete("seckill:reservation:101:7");
+        assertThat(response.redisStock()).isEqualTo(2);
+        assertThat(response.reserved()).isTrue();
+    }
+
+    /**
      * 测试夹具，集中创建 Redis 与 MQ 依赖。
      */
     private static final class TestFixture {

@@ -104,7 +104,11 @@ async function cancelSelectedSeckillOrder() {
   try {
     const api = apiClient();
     seckillOrder.value = await api.cancelSeckillOrder(selectedProduct.value.id, userId.value);
-    seckillStock.value = await api.releaseSeckillReservation(selectedProduct.value.id, userId.value);
+    if (seckillOrder.value.status === 2) {
+      seckillStock.value = await api.releaseSeckillReservation(selectedProduct.value.id, userId.value);
+    } else {
+      seckillStock.value = await api.fetchSeckillStock(selectedProduct.value.id, userId.value);
+    }
     selectedProduct.value = await api.fetchProduct(selectedProduct.value.id);
   } finally {
     loading.value = false;

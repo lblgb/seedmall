@@ -98,6 +98,11 @@ public class SeckillService {
      * 释放用户排队标记，并在标记存在时回补 Redis 秒杀库存。
      */
     public SeckillStockResponse releaseReservation(Long userId, Long productId) {
+        Optional<OrderQueryResponse> existingOrder = orderStatusClient.querySeckillOrder(userId, productId);
+        if (existingOrder.isPresent() && !Integer.valueOf(2).equals(existingOrder.get().status())) {
+            return queryStock(productId, userId);
+        }
+
         String reservationKey = reservationKey(userId, productId);
         boolean reserved = Boolean.TRUE.equals(redisTemplate.hasKey(reservationKey));
         if (!reserved) {

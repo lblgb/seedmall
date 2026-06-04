@@ -189,6 +189,25 @@ class OrderServiceTest {
     }
 
     /**
+     * 已支付订单不允许按取消订单链路恢复数据库库存。
+     */
+    @Test
+    void shouldNotCancelPaidSeckillOrder() {
+        FakeOrderRepository repository = new FakeOrderRepository();
+        repository.existingOrder = orderOf("SM_PAID", 7L, 101L, "SECKILL");
+        repository.existingOrder.setStatus(1);
+        repository.existingOrder.setQuantity(1);
+        FakeProductStockClient productStockClient = new FakeProductStockClient();
+        OrderService service = new OrderService(repository, productStockClient);
+
+        Optional<OrderQueryResponse> response = service.cancelSeckillOrder(7L, 101L);
+
+        assertThat(response).isPresent();
+        assertThat(response.get().status()).isEqualTo(1);
+        assertThat(productStockClient.restoreRequests).isEmpty();
+    }
+
+    /**
      * 支付已创建的秒杀订单时应将订单状态推进到已支付。
      */
     @Test
