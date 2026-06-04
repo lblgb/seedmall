@@ -5,6 +5,8 @@ package com.seedmall.order.repository;
 
 import com.seedmall.order.entity.TradeOrder;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -36,4 +38,9 @@ public interface OrderRepository {
      * 重新激活已取消的业务订单。
      */
     boolean reactivateCanceledByBusinessKey(Long userId, Long productId, String source, String orderNo, Integer quantity);
+
+    /**
+     * 查询指定来源下超时未支付的订单。
+     */
+    List<TradeOrder> findCreatedBefore(String source, LocalDateTime cutoff, int limit);
 }

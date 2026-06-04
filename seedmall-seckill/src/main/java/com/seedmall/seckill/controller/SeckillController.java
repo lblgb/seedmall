@@ -4,6 +4,7 @@
 package com.seedmall.seckill.controller;
 
 import com.seedmall.api.seckill.SeckillStockResponse;
+import com.seedmall.api.seckill.SeckillCancelResponse;
 import com.seedmall.common.response.ApiResponse;
 import com.seedmall.seckill.service.SeckillService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,6 +12,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 秒杀接口。
@@ -58,5 +61,22 @@ public class SeckillController {
     @PostMapping("/seckill/{productId}/cancel")
     public ApiResponse<SeckillStockResponse> releaseReservation(@PathVariable Long productId, @RequestParam Long userId) {
         return ApiResponse.ok(seckillService.releaseReservation(userId, productId));
+    }
+
+    /**
+     * 统一取消秒杀订单并释放排队标记。
+     */
+    @PostMapping("/seckill/{productId}/order/cancel")
+    public ApiResponse<SeckillCancelResponse> cancelSeckillOrder(@PathVariable Long productId, @RequestParam Long userId) {
+        return ApiResponse.ok(seckillService.cancelSeckillOrder(userId, productId));
+    }
+
+    /**
+     * 批量取消超时未支付的秒杀订单。
+     */
+    @PostMapping("/seckill/orders/timeout-cancel")
+    public ApiResponse<List<SeckillCancelResponse>> cancelExpiredSeckillOrders(@RequestParam(defaultValue = "30") Integer timeoutMinutes,
+                                                                               @RequestParam(defaultValue = "50") Integer limit) {
+        return ApiResponse.ok(seckillService.cancelExpiredSeckillOrders(timeoutMinutes, limit));
     }
 }

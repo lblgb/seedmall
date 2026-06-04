@@ -4,6 +4,7 @@
 package com.seedmall.order.controller;
 
 import com.seedmall.api.order.CreateOrderRequest;
+import com.seedmall.api.order.OrderEventResponse;
 import com.seedmall.api.order.OrderQueryResponse;
 import com.seedmall.common.response.ApiResponse;
 import com.seedmall.order.service.OrderService;
@@ -14,6 +15,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Duration;
+import java.util.List;
 
 /**
  * 订单接口。
@@ -61,5 +65,22 @@ public class OrderController {
     @PostMapping("/seckill/pay")
     public ApiResponse<OrderQueryResponse> paySeckillOrder(@RequestParam Long userId, @RequestParam Long productId) {
         return ApiResponse.ok(orderService.paySeckillOrder(userId, productId).orElse(null));
+    }
+
+    /**
+     * 批量取消超时未支付的秒杀订单。
+     */
+    @PostMapping("/seckill/timeout-cancel")
+    public ApiResponse<List<OrderQueryResponse>> cancelExpiredSeckillOrders(@RequestParam Integer timeoutMinutes,
+                                                                            @RequestParam Integer limit) {
+        return ApiResponse.ok(orderService.cancelExpiredSeckillOrders(Duration.ofMinutes(timeoutMinutes), limit));
+    }
+
+    /**
+     * 查询用户指定商品的订单事件。
+     */
+    @GetMapping("/events")
+    public ApiResponse<List<OrderEventResponse>> queryOrderEvents(@RequestParam Long userId, @RequestParam Long productId) {
+        return ApiResponse.ok(orderService.queryOrderEvents(userId, productId));
     }
 }

@@ -272,4 +272,48 @@ describe('createSeedmallApi', () => {
     expect(stock.redisStock).toBe(10);
     expect(stock.reservedText).toBe('未排队');
   });
+
+  /**
+   * 验证统一取消会调用秒杀编排接口。
+   */
+  it('cancels seckill flow through unified gateway endpoint', async () => {
+    const api = createSeedmallApi('http://localhost:9000', {
+      get: async () => {
+        throw new Error('not used');
+      },
+      post: async <T = unknown>(url: string) => {
+        expect(url).toContain('/seckill/101/order/cancel?userId=7');
+        return {
+          data: {
+            code: 0,
+            message: '成功',
+            data: {
+              order: {
+                orderNo: 'SM_EXISTING',
+                userId: 7,
+                productId: 101,
+                quantity: 1,
+                status: 2,
+                source: 'SECKILL'
+              },
+              stock: {
+                productId: 101,
+                redisStock: 10,
+                userId: 7,
+                reserved: false,
+                reservationTtlSeconds: null
+              },
+              reservationReleased: true
+            }
+          } as T
+        };
+      }
+    });
+
+    const result = await api.cancelSeckillFlow(101, 7);
+
+    expect(result.order.statusText).toBe('已取消');
+    expect(result.stock.redisStock).toBe(10);
+    expect(result.reservationReleased).toBe(true);
+  });
 });

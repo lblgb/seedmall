@@ -6,8 +6,10 @@ package com.seedmall.seckill.service;
 import com.seedmall.api.mq.RocketMqTopics;
 import com.seedmall.api.order.CreateOrderRequest;
 import com.seedmall.api.order.OrderQueryResponse;
+import com.seedmall.api.seckill.SeckillCancelResponse;
 import com.seedmall.api.seckill.SeckillStockResponse;
 import com.seedmall.common.exception.BizException;
+import com.seedmall.seckill.integration.OrderCommandClient;
 import com.seedmall.seckill.integration.OrderStatusClient;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.junit.jupiter.api.Test;
@@ -15,6 +17,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -198,6 +201,61 @@ class SeckillServiceTest {
     }
 
     /**
+     * 统一取消秒杀订单时应先取消订单，再释放 Redis 排队标记。
+     */
+    @Test
+    void shouldCancelSeckillOrderAndReleaseReservationInOneBackendFlow() {
+        TestFixture fixture = new TestFixture();
+        fixture.cancelOrder = Optional.of(orderWithStatus(2));
+        fixture.existingOrder = Optional.of(orderWithStatus(2));
+        when(fixture.redisTemplate.hasKey("seckill:reservation:101:7")).thenReturn(true);
+        when(fixture.valueOperations.increment("seckill:stock:101")).thenReturn(10L);
+
+        SeckillCancelResponse response = fixture.service.cancelSeckillOrder(7L, 101L);
+
+        assertThat(response.order().status()).isEqualTo(2);
+        assertThat(response.stock().redisStock()).isEqualTo(10);
+        assertThat(response.reservationReleased()).isTrue();
+        verify(fixture.redisTemplate).delete("seckill:reservation:101:7");
+    }
+
+    /**
+     * 已支付订单走统一取消时不应释放 Redis 排队标记。
+     */
+    @Test
+    void shouldNotReleaseReservationWhenUnifiedCancelKeepsPaidOrder() {
+        TestFixture fixture = new TestFixture();
+        fixture.cancelOrder = Optional.of(orderWithStatus(1));
+        fixture.existingOrder = Optional.of(orderWithStatus(1));
+        when(fixture.valueOperations.get("seckill:stock:101")).thenReturn("2");
+        when(fixture.redisTemplate.hasKey("seckill:reservation:101:7")).thenReturn(true);
+
+        SeckillCancelResponse response = fixture.service.cancelSeckillOrder(7L, 101L);
+
+        assertThat(response.order().status()).isEqualTo(1);
+        assertThat(response.reservationReleased()).isFalse();
+        verify(fixture.valueOperations, never()).increment("seckill:stock:101");
+    }
+
+    /**
+     * 批量取消超时未支付订单后应释放对应的 Redis 排队标记。
+     */
+    @Test
+    void shouldReleaseReservationsAfterCancelingExpiredOrders() {
+        TestFixture fixture = new TestFixture();
+        fixture.expiredOrders = List.of(orderWithStatus(2));
+        fixture.existingOrder = Optional.of(orderWithStatus(2));
+        when(fixture.redisTemplate.hasKey("seckill:reservation:101:7")).thenReturn(true);
+        when(fixture.valueOperations.increment("seckill:stock:101")).thenReturn(10L);
+
+        List<SeckillCancelResponse> responses = fixture.service.cancelExpiredSeckillOrders(30, 20);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.getFirst().reservationReleased()).isTrue();
+        verify(fixture.redisTemplate).delete("seckill:reservation:101:7");
+    }
+
+    /**
      * 测试夹具，集中创建 Redis 与 MQ 依赖。
      */
     private static final class TestFixture {
@@ -207,8 +265,27 @@ class SeckillServiceTest {
         private final ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         private final RocketMQTemplate rocketMQTemplate = mock(RocketMQTemplate.class);
         private Optional<OrderQueryResponse> existingOrder = Optional.empty();
+        private Optional<OrderQueryResponse> cancelOrder = Optional.empty();
+        private List<OrderQueryResponse> expiredOrders = List.of();
         private final OrderStatusClient orderStatusClient = (userId, productId) -> existingOrder;
-        private final SeckillService service = new SeckillService(redisTemplate, rocketMQTemplate, orderStatusClient);
+        private final OrderCommandClient orderCommandClient = new OrderCommandClient() {
+            /**
+             * 取消用户在指定商品上的秒杀订单。
+             */
+            @Override
+            public Optional<OrderQueryResponse> cancelSeckillOrder(Long userId, Long productId) {
+                return cancelOrder;
+            }
+
+            /**
+             * 批量取消超时未支付的秒杀订单。
+             */
+            @Override
+            public java.util.List<OrderQueryResponse> cancelExpiredSeckillOrders(Integer timeoutMinutes, Integer limit) {
+                return expiredOrders;
+            }
+        };
+        private final SeckillService service = new SeckillService(redisTemplate, rocketMQTemplate, orderStatusClient, orderCommandClient);
 
         /**
          * 初始化 Redis value 操作对象。

@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.List;
+
 /**
  * 订单服务 Feign 客户端。
  */
@@ -40,4 +42,17 @@ public interface OrderFeignClient {
      */
     @PostMapping("/seckill/pay")
     ApiResponse<OrderQueryResponse> paySeckillOrder(@RequestParam Long userId, @RequestParam Long productId);
+
+    /**
+     * 批量取消超时未支付的秒杀订单。
+     */
+    @PostMapping("/seckill/timeout-cancel")
+    ApiResponse<List<OrderQueryResponse>> cancelExpiredSeckillOrders(@RequestParam Integer timeoutMinutes,
+                                                                     @RequestParam Integer limit);
+
+    /**
+     * 查询用户指定商品的订单事件。
+     */
+    @GetMapping("/events")
+    ApiResponse<List<OrderEventResponse>> queryOrderEvents(@RequestParam Long userId, @RequestParam Long productId);
 }

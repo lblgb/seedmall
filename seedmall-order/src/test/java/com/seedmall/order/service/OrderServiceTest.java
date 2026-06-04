@@ -4,6 +4,7 @@
 package com.seedmall.order.service;
 
 import com.seedmall.api.order.CreateOrderRequest;
+import com.seedmall.api.order.OrderEventResponse;
 import com.seedmall.api.order.OrderQueryResponse;
 import com.seedmall.order.entity.TradeOrder;
 import com.seedmall.order.integration.ProductStockClient;
@@ -11,6 +12,8 @@ import com.seedmall.order.repository.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DuplicateKeyException;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -260,6 +263,43 @@ class OrderServiceTest {
     }
 
     /**
+     * 超时未支付订单应被批量取消并恢复数据库库存。
+     */
+    @Test
+    void shouldCancelExpiredCreatedOrders() {
+        FakeOrderRepository repository = new FakeOrderRepository();
+        repository.expiredOrders.add(orderOf("SM_EXPIRED", 7L, 101L, "SECKILL"));
+        repository.expiredOrders.getFirst().setStatus(0);
+        repository.expiredOrders.getFirst().setQuantity(1);
+        FakeProductStockClient productStockClient = new FakeProductStockClient();
+        OrderService service = new OrderService(repository, productStockClient);
+
+        List<OrderQueryResponse> canceledOrders = service.cancelExpiredSeckillOrders(Duration.ofMinutes(30), 20);
+
+        assertThat(canceledOrders).hasSize(1);
+        assertThat(canceledOrders.getFirst().status()).isEqualTo(2);
+        assertThat(repository.expiredOrders.getFirst().getStatus()).isEqualTo(2);
+        assertThat(productStockClient.restoreRequests).containsExactly("101:1");
+    }
+
+    /**
+     * 订单服务应记录可供 Agent 诊断的订单事件。
+     */
+    @Test
+    void shouldRecordOrderEventsForAgentDiagnosis() {
+        FakeOrderRepository repository = new FakeOrderRepository();
+        OrderService service = new OrderService(repository, new FakeProductStockClient());
+
+        service.create(new CreateOrderRequest(7L, 101L, 1, "SECKILL"));
+
+        List<OrderEventResponse> events = service.queryOrderEvents(7L, 101L);
+
+        assertThat(events).hasSize(1);
+        assertThat(events.getFirst().eventType()).isEqualTo("ORDER_CREATED");
+        assertThat(events.getFirst().detail()).contains("创建秒杀订单");
+    }
+
+    /**
      * 测试用内存仓储，记录服务写入的订单对象。
      */
     private static final class FakeOrderRepository implements OrderRepository {
@@ -269,6 +309,7 @@ class OrderServiceTest {
         private boolean duplicateOnSave;
         private boolean duplicateRaised;
         private final List<TradeOrder> savedOrders = new ArrayList<>();
+        private final List<TradeOrder> expiredOrders = new ArrayList<>();
 
         /**
          * 按业务幂等键查询已有订单。
@@ -276,6 +317,14 @@ class OrderServiceTest {
         @Override
         public Optional<TradeOrder> findByBusinessKey(Long userId, Long productId, String source) {
             if (existingOrder == null) {
+                Optional<TradeOrder> expiredOrder = expiredOrders.stream()
+                        .filter(order -> order.getUserId().equals(userId))
+                        .filter(order -> order.getProductId().equals(productId))
+                        .filter(order -> order.getSource().equals(source))
+                        .findFirst();
+                if (expiredOrder.isPresent()) {
+                    return expiredOrder;
+                }
                 return duplicateRaised ? Optional.ofNullable(existingAfterDuplicate) : Optional.empty();
             }
             boolean matched = existingOrder.getUserId().equals(userId)
@@ -335,6 +384,18 @@ class OrderServiceTest {
             order.get().setQuantity(quantity);
             order.get().setStatus(0);
             return true;
+        }
+
+        /**
+         * 查询超时未支付的秒杀订单。
+         */
+        @Override
+        public List<TradeOrder> findCreatedBefore(String source, LocalDateTime cutoff, int limit) {
+            return expiredOrders.stream()
+                    .filter(order -> source.equals(order.getSource()))
+                    .filter(order -> Integer.valueOf(0).equals(order.getStatus()))
+                    .limit(limit)
+                    .toList();
         }
     }
 

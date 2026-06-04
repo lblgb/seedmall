@@ -66,6 +66,12 @@ export type SeckillStock = {
   reservationTtlSeconds: number | null;
 };
 
+export type SeckillCancelFlow = {
+  order: SeckillOrder;
+  stock: SeckillStock;
+  reservationReleased: boolean;
+};
+
 export type TimelineEvent = {
   name: string;
   status: 'ready' | 'running' | 'done' | 'warn';
@@ -80,6 +86,7 @@ export type SeedmallApi = {
   fetchSeckillStock: (productId: number, userId: number) => Promise<SeckillStock>;
   initializeSeckillStock: (productId: number, stock: number) => Promise<SeckillStock>;
   cancelSeckillOrder: (productId: number, userId: number) => Promise<SeckillOrder>;
+  cancelSeckillFlow: (productId: number, userId: number) => Promise<SeckillCancelFlow>;
   paySeckillOrder: (productId: number, userId: number) => Promise<SeckillOrder>;
   releaseSeckillReservation: (productId: number, userId: number) => Promise<SeckillStock>;
   auditContent: (bizId: string, content: string) => Promise<AiAuditResult>;
@@ -223,6 +230,21 @@ function normalizeSeckillStock(rawStock: Partial<SeckillStock> | null, productId
 }
 
 /**
+ * 将后端统一取消响应转换为前端展示模型。
+ */
+function normalizeSeckillCancelFlow(rawResult: {
+  order?: Partial<SeckillOrder> | null;
+  stock?: Partial<SeckillStock> | null;
+  reservationReleased?: boolean;
+} | null, productId: number, userId: number): SeckillCancelFlow {
+  return {
+    order: normalizeSeckillOrder(rawResult?.order ?? null, productId, userId),
+    stock: normalizeSeckillStock(rawResult?.stock ?? null, productId, userId),
+    reservationReleased: Boolean(rawResult?.reservationReleased)
+  };
+}
+
+/**
  * 创建 SeedMall API 客户端。
  */
 export function createSeedmallApi(gatewayUrl: string, httpClient: HttpClient = axios): SeedmallApi {
@@ -318,6 +340,22 @@ export function createSeedmallApi(gatewayUrl: string, httpClient: HttpClient = a
         return normalizeSeckillOrder(unwrapApiResponse(response), productId, userId);
       } catch {
         return emptySeckillOrder(productId, userId);
+      }
+    },
+
+    /**
+     * 通过后端统一编排取消秒杀订单。
+     */
+    async cancelSeckillFlow(productId: number, userId: number) {
+      try {
+        const response = await httpClient.post<ApiResponse<{
+          order?: Partial<SeckillOrder> | null;
+          stock?: Partial<SeckillStock> | null;
+          reservationReleased?: boolean;
+        } | null>>(`${baseUrl}/seckill/${productId}/order/cancel?userId=${userId}`);
+        return normalizeSeckillCancelFlow(unwrapApiResponse(response), productId, userId);
+      } catch {
+        return normalizeSeckillCancelFlow(null, productId, userId);
       }
     },
 

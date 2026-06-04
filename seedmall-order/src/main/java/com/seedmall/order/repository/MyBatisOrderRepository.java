@@ -9,6 +9,8 @@ import com.seedmall.order.entity.TradeOrder;
 import com.seedmall.order.mapper.TradeOrderMapper;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -89,5 +91,18 @@ public class MyBatisOrderRepository implements OrderRepository {
                 .set(TradeOrder::getQuantity, quantity)
                 .set(TradeOrder::getStatus, 0);
         return tradeOrderMapper.update(null, wrapper) > 0;
+    }
+
+    /**
+     * 查询指定来源下超时未支付的订单。
+     */
+    @Override
+    public List<TradeOrder> findCreatedBefore(String source, LocalDateTime cutoff, int limit) {
+        LambdaQueryWrapper<TradeOrder> wrapper = new LambdaQueryWrapper<TradeOrder>()
+                .eq(TradeOrder::getSource, source)
+                .eq(TradeOrder::getStatus, 0)
+                .lt(TradeOrder::getCreatedAt, cutoff)
+                .last("LIMIT " + Math.max(1, limit));
+        return tradeOrderMapper.selectList(wrapper);
     }
 }

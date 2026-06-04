@@ -6,8 +6,10 @@ package com.seedmall.seckill.service;
 import com.seedmall.api.mq.RocketMqTopics;
 import com.seedmall.api.order.CreateOrderRequest;
 import com.seedmall.api.order.OrderQueryResponse;
+import com.seedmall.api.seckill.SeckillCancelResponse;
 import com.seedmall.api.seckill.SeckillStockResponse;
 import com.seedmall.common.exception.BizException;
+import com.seedmall.seckill.integration.OrderCommandClient;
 import com.seedmall.seckill.integration.OrderStatusClient;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -15,6 +17,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -27,14 +30,19 @@ public class SeckillService {
     private final StringRedisTemplate redisTemplate;
     private final RocketMQTemplate rocketMQTemplate;
     private final OrderStatusClient orderStatusClient;
+    private final OrderCommandClient orderCommandClient;
 
     /**
      * 注入 Redis 与 MQ 模板。
      */
-    public SeckillService(StringRedisTemplate redisTemplate, RocketMQTemplate rocketMQTemplate, OrderStatusClient orderStatusClient) {
+    public SeckillService(StringRedisTemplate redisTemplate,
+                          RocketMQTemplate rocketMQTemplate,
+                          OrderStatusClient orderStatusClient,
+                          OrderCommandClient orderCommandClient) {
         this.redisTemplate = redisTemplate;
         this.rocketMQTemplate = rocketMQTemplate;
         this.orderStatusClient = orderStatusClient;
+        this.orderCommandClient = orderCommandClient;
     }
 
     /**
@@ -112,6 +120,33 @@ public class SeckillService {
         Long redisStock = redisTemplate.opsForValue().increment(stockKey(productId));
         Integer stock = redisStock == null ? null : redisStock.intValue();
         return new SeckillStockResponse(productId, stock, userId, false, null);
+    }
+
+    /**
+     * 统一取消秒杀订单，并在订单取消成功后释放 Redis 排队标记。
+     */
+    public SeckillCancelResponse cancelSeckillOrder(Long userId, Long productId) {
+        Optional<OrderQueryResponse> canceledOrder = orderCommandClient.cancelSeckillOrder(userId, productId);
+        if (canceledOrder.isEmpty()) {
+            return new SeckillCancelResponse(null, queryStock(productId, userId), false);
+        }
+        SeckillStockResponse stock = releaseReservation(userId, productId);
+        boolean released = Integer.valueOf(2).equals(canceledOrder.get().status()) && !stock.reserved();
+        return new SeckillCancelResponse(canceledOrder.get(), stock, released);
+    }
+
+    /**
+     * 批量取消超时未支付订单，并释放对应 Redis 排队标记。
+     */
+    public List<SeckillCancelResponse> cancelExpiredSeckillOrders(Integer timeoutMinutes, Integer limit) {
+        return orderCommandClient.cancelExpiredSeckillOrders(timeoutMinutes, limit)
+                .stream()
+                .map(order -> {
+                    SeckillStockResponse stock = releaseReservation(order.userId(), order.productId());
+                    boolean released = Integer.valueOf(2).equals(order.status()) && !stock.reserved();
+                    return new SeckillCancelResponse(order, stock, released);
+                })
+                .toList();
     }
 
     /**
